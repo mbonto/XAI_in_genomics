@@ -82,7 +82,7 @@ Here is some additional information about the simulated datasets.
 |   Name  | # classes | # variables | # groups | Overlapping<br>groups|     # variable<br>per group    | # over-expressed<br>groups per class | # subclass | # informative<br>variables |
 |:-----:|:-----------:|:-----------:|:--------:|:--------------------:|:------------------------------:|:------------------------------------:|:----------:|:--------------------------:|
 | SIMU1 |      33     |    15000   |    1500    |        No           |           10                   |               37 per class           |       -           |        370          |
-| SIMU2 |      33     |    15000   |    3000    |       Yes           |      10 in average             |               37 per class           |        -          |        370          |
+| SIMU2 |      33     |    15000   |    3000    |       Yes           |      10 in average             |               37 per class           |        -          |   370 in average    |
 | SimuA |       2     |    50000   |    5000    |         No          |          10                    |              500 per class           |       1 / 1       |   10000 (class 0)   |
 | SimuB |       2     |    50000   |    5000    |         No          |          10                    |          500 per subclass            |        3 / 1      |   10000 (class 0)   |
 | SimuC |       2     |    50000   |    5000    |         No          |          10                    |          500 per subclass            |        5 / 1      |   10000 (class 0)   |
