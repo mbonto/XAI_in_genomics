@@ -11,6 +11,6 @@ from download_data import *
 data_path = os.path.join(set_path(), "tcga")
 database = "gdc"
 ## cancers = read_file(os.path.join(data_path, "cancers"))
-cancers = ["BRCA", "KIRC"]
+cancers = ["BRCA", ]  # "KIRC"
 for cancer in cancers:
     download_dataset(data_path, database, cancer)
