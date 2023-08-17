@@ -1,6 +1,6 @@
 # Paths
 def set_path():
-    path = '/local/mbontono/data/'  # absolute path of the data folder
+    path = '/nfs_home/haget/XAI_in_progress/data' # '/local/mbontono/data/'  # absolute path of the data folder
     return path
 
 
