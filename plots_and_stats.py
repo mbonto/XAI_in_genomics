@@ -64,110 +64,88 @@ def describe_dataloader(data_loader):
 
 
 
-def plot_random_gene_expression(data, info_X, info_Y, group_by_classes=True, gene_index=None, log_scale=False, log=False, scale=False, unit='count'):
-    if scale:
-        info_X = np.log2(transform_data(2**info_X-1, transform='divide_by_sum', factor=10**6) + 1)
-    
-    if log:
-        info_X = np.log2(info_X + 1)
-    
+def plot_random_gene_expression(X, Y, feat_name, class_name, group_by_classes=True, gene_index=None, log_scale=False): 
     if gene_index is None:
-        gene_index = np.random.randint(info_X.shape[1])
+        gene_index = np.random.randint(X.shape[1])
 
     plt.figure(figsize=(20, 3))
-    
     if group_by_classes:
-        sns.boxplot(x=[data.inv_label_map[index] for index in info_y], y=info_X[:, gene_index], order=np.sort(np.unique([data.inv_label_map[index] for index in info_y])))
-        plt.title(f"Expression of gene {data.genes_IDs[gene_index]} ({gene_index}) grouped by class in the dataset.")
+        sns.boxplot(x=[class_name[_class] for _class in Y], y=X[:, gene_index], order=np.sort(np.unique([class_name[_class] for _class in Y])))
+        plt.title(f"Expression of gene {feat_name[gene_index]} ({gene_index}) grouped by class in the dataset.")
         plt.tick_params(axis='both', which='major', labelsize=11)
         if log_scale:
             plt.yscale('log')
-        plt.ylabel(f"Gene expresion\n({unit})")
+        plt.ylabel(f"Gene expresion")
     else:
-        sns.boxplot(x=info_X[:, gene_index])
-        plt.title(f"Expression of gene {data.genes_IDs[gene_index]} ({gene_index}) in the dataset.")
+        sns.boxplot(x=X[:, gene_index])
+        plt.title(f"Expression of gene {feat_name[gene_index]} ({gene_index}) in the dataset.")
         if log_scale:
             plt.xscale('log')
-        plt.xlabel(f"Gene expresion ({unit})")
+        plt.xlabel(f"Gene expresion")
 
 
-def plot_random_sample_expression(data, log=False, unit='count', index=None, scale=False):
-    plt.figure(figsize=(20, 2))
+def plot_random_sample_expression(X, index=None, scale=False):
     if index is None:
-        index = np.random.randint(0, len(data))
-    ID = data.sample_IDs[index]
-    if scale:
-        sample = transform_data((2**data.expression.loc[ID].values-1).reshape(1, -1), transform='divide_by_sum', factor=10**6).reshape(-1)
-        plt.plot(np.log2(sample + 1), '.')
-    elif log:
-        plt.plot(np.log2(data.expression.loc[ID].values + 1), '.')
-    else:
-        plt.plot(data.expression.loc[ID].values, '.')
+        index = np.random.randint(0, X.shape[0])
+    plt.figure(figsize=(20, 2))
+    plt.plot(X[index, :], '.')
     plt.xlabel("Gene index")
-    plt.ylabel(f"Gene expression\n({unit})")
-    plt.title("Gene expression in a random sample.")         
+    plt.ylabel(f"Gene expression\nin a sample")        
         
 
-def plot_stats_on_gene_expression(data, info_X, info_Y, criteria='average', log_scale=False, log=False, scale=False, unit='count'):    
-    if scale:
-        info_X = np.log2(transform_data(2**info_X-1, transform='divide_by_sum', factor=10**6) + 1)
-    
-    if log:
-        info_X = np.log2(info_X + 1)
-        
+def plot_stats_on_gene_expression(X, criteria='average', log_scale=False):     
     if criteria == 'average':
-        info_X = np.mean(info_X, axis=0)
-        print(f"There are {np.sum(info_X == 0)} genes whose average expression is 0.")
+        X = np.mean(X, axis=0)
+        print(f"There are {np.sum(X == 0)} genes whose average expression is 0.")
     elif criteria == 'median':
-        info_X = np.median(info_X, axis=0)
-        print(f"There are {np.sum(info_X == 0)} genes whose median expression is 0.")
+        X = np.median(X, axis=0)
+        print(f"There are {np.sum(X == 0)} genes whose median expression is 0.")
     elif criteria == 'std':
-        info_X = np.std(info_X, axis=0)
-        print(f"There are {np.sum(info_X == 0)} genes whose standard deviation is 0.")
+        X = np.std(X, axis=0)
+        print(f"There are {np.sum(X == 0)} genes whose standard deviation is 0.")
     elif criteria == 'min':
-        info_X = np.min(info_X, axis=0)
-        print(f"There are {np.sum(info_X == 0)} genes whose minimum is 0.")
+        X = np.min(X, axis=0)
+        print(f"There are {np.sum(X == 0)} genes whose minimum is 0.")
     elif criteria == 'max':
-        info_X = np.max(info_X, axis=0)
-        print(f"There are {np.sum(info_X == 0)} genes whose maximum is 0.")
+        X = np.max(X, axis=0)
+        print(f"There are {np.sum(X == 0)} genes whose maximum is 0.")
     
+    # Statistics for each gene
     plt.figure(figsize=(20, 2))
-    plt.plot(info_X, '.')
+    plt.plot(X, '.')
     plt.xlabel("Gene index")
-    plt.ylabel(f"{criteria.capitalize()} expression\n({unit})")
+    plt.ylabel(f"{criteria.capitalize()} expression")
     plt.show()
 
+    # Boxplot
     plt.figure(figsize=(20, 2))
-    sns.boxplot(x=info_X)
+    sns.boxplot(x=X)
     if log_scale:
         plt.xscale('log')
-    plt.xlabel(f"{criteria.capitalize()} expression per locus ({unit})")
+    plt.xlabel(f"{criteria.capitalize()} expression per locus")
     
     
-def sort_genes(data, info_X, info_Y, criteria='average', log_scale=False, scale=False, unit='count'):
-    if scale:
-        info_X = np.log2(transform_data(2**info_X-1, transform='divide_by_sum', factor=10**6) + 1)
-    
+def sort_genes(X, criteria='average', log_scale=False):
     if criteria == 'average':
-        info_X = np.mean(info_X, axis=0)
+        X = np.mean(X, axis=0)
     elif criteria == 'median':
-        info_X = np.median(info_X, axis=0)
+        X = np.median(X, axis=0)
     elif criteria == 'std':
-        info_X = np.std(info_X, axis=0)
+        X = np.std(X, axis=0)
     elif criteria == 'min':
-        info_X = np.min(info_X, axis=0)
+        X = np.min(X, axis=0)
     elif criteria == 'max':
-        info_X = np.max(info_X, axis=0)
+        X = np.max(X, axis=0)
     
     plt.figure(figsize=(20, 5))
-    plt.plot(np.sort(info_X), '.')
+    plt.plot(np.sort(X), '.')
     plt.xlabel(f"Genes sorted by {criteria.capitalize()} expression")
-    plt.ylabel(f"{criteria.capitalize()} expression ({unit})")
+    plt.ylabel(f"{criteria.capitalize()} expression")
     if log_scale:
         plt.yscale("log")
     plt.show()
     
-    return np.argsort(info_X)
+    return np.argsort(X)
     
 
 def plot_class_imbalance(data, label_name, save_path=None):
@@ -185,37 +163,25 @@ def plot_class_imbalance(data, label_name, save_path=None):
     plt.show()
     
 
-def describe_gene_expression(data, info_X, info_Y, log_scale=True, unit='count', log=False, scale=False):
-    if scale:
-        info_X = np.log2(transform_data(2**info_X-1, transform='divide_by_sum', factor=10**6) + 1)
-        
-    if log:
-        info_X = np.log2(info_X + 1)
-    
-    print("Mean: ", np.round(np.mean(info_X), 2))
-    print("Median: ", np.round(np.median(info_X), 2))
-    print("Max: ", np.round(np.max(info_X), 2))
-    print("Min: ", np.round(np.min(info_X), 2))
+def describe_gene_expression(X, log_scale=False, log=False): 
+    print("Mean: ", np.round(np.mean(X), 2))
+    print("Median: ", np.round(np.median(X), 2))
+    print("Max: ", np.round(np.max(X), 2))
+    print("Min: ", np.round(np.min(X), 2))
+    print(f"Number of times the expression of a gene is equal to 0: {np.sum(X==0)}")
 
     plt.figure(figsize=(20, 2))
-    if log:
-        sns.histplot(info_X.reshape(-1) + np.min(info_X), log_scale=False)
-    else:
-        sns.histplot(info_X.reshape(-1) + 1, binrange=[0, 7], bins=24, log_scale=True)
-    plt.xlabel(f"Distribution of gene expression ({unit}) across the dataset")
+    sns.histplot(X.reshape(-1)[X.reshape(-1) != 0], binrange=[0, 7], bins=7, log_scale=True)
+    plt.xlabel(f"Distribution of gene expression across all samples.")
     plt.ylabel("Number of\ngenes")
     if log_scale:
         plt.yscale('log')
     plt.show()
     
     plt.figure(figsize=(20, 2))
-    _sum = np.sum(info_X, axis=1)
-    print('Below, the gene expressions are summed per individual.')
-    if log:
-        sns.histplot(_sum, log_scale=False)
-    else:
-        sns.histplot(_sum, log_scale=False)
-    plt.xlabel(f"Sum of gene expressions for each individual sample ({unit})")
+    _sum = np.sum(X, axis=1)
+    sns.histplot(_sum, log_scale=False)
+    plt.xlabel(f"Gene expression summed per sample")
     plt.ylabel("Number of\nindividuals")
     if log_scale:
         plt.yscale('log')
@@ -282,28 +248,31 @@ def plot_box(data, xlabel=None, save_name=None):
     plt.show()
     
     
-def describe_random_individuals(data, info_X, info_Y, log=True, scale=False, log_scale=False, save_path=None, unit='log2(count+1)'):
-    if scale:
-        info_X = np.log2(transform_data(2**info_X-1, transform='divide_by_sum', factor=10**6) + 1)
-    if log:
-        info_X = np.log2(info_X+1)
+def plot_sum_of_features_for_each_sample(X):
+    plt.figure(figsize=(15, 2))
+    plt.boxplot(np.sum(X, axis=1), vert=False)
+    plt.yticks(color='w')
+    plt.xlabel('Range of the sum of the values per sample (point = sample)')
+    plt.show()
 
-    plt.figure(figsize=(15, 4))
 
+def describe_random_individuals(X, ylabel=None, save_path=None, log_scale=False):
+    # Random samples
     my_samples = {}
     for i in range(20):
-        j = np.random.randint(info_X.shape[0])
-        my_samples[i] = info_X[j]
-
+        j = np.random.randint(X.shape[0])
+        my_samples[i] = X[j]
+    # Plot
+    plt.figure(figsize=(15, 4))
     plt.boxplot(my_samples.values(), vert=True)
     if log_scale:
         plt.yscale('log')
     plt.xticks(color='w')
     plt.xlabel('Distribution of gene expression in 20 individuals (boxes)')
-    plt.ylabel(f'Gene expression\n({unit})')
+    plt.ylabel(ylabel)
     if save_path is not None:
         plt.savefig(os.path.join(save_path, "random_individuals"), bbox_inches='tight')
-    plt.show()
+    plt.show()  
     
 
 def draw_from_Dirichlet(param):

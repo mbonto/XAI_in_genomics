@@ -23,7 +23,9 @@ def generate_hierarchical_data(alpha, beta, n_sample, proportion=None):
         # Labels (n_sample)
         y[count:count+n_sample_per_class] = np.ones((n_sample_per_class), dtype='int') * c
         # Proportion of pathways in a sample (n_sample, n_pathway)
-        class_to_path = np.random.dirichlet(alpha['C'+str(c)], size=(n_sample_per_class))
+        class_to_path = np.zeros((n_sample_per_class, n_pathway))
+        values = np.random.dirichlet(alpha['C'+str(c)][alpha['C'+str(c)]!=0], size=(n_sample_per_class))
+        class_to_path[:, alpha['C'+str(c)]!=0] = values
         # Each sample contains n_read reads associated with genes.
         for sample in range(n_sample_per_class):
             print(count+sample, end='\r')
@@ -45,7 +47,15 @@ def generate_eta_beta(n_pathway, sparsity, n_gene, case=None):
     for p in range(n_pathway):
         # Define the underlying graph structure
         if case != 0:
-            eta['P'+str(p)] = np.array([0.,] * case * p + [1.,] * case + [0.,] * case * (n_pathway - p - 1)) * 5
+            if sparsity not in ["overlap", "overlap2"]:
+                eta['P'+str(p)] = np.array([0.,] * case * p + [1.,] * case + [0.,] * case * (n_pathway - p - 1)) * 5
+            else:
+                eta['P'+str(p)] = np.array([0.,] * n_gene)
+                if sparsity == "overlap" and p == n_pathway - 1:
+                    eta['P'+str(p)][(case-1)*p:(case-1)*p+case-1] = np.array([1.,] * (case-1)) * 5
+                    eta['P'+str(p)][0] = np.array([1.,]) * 5
+                else:
+                    eta['P'+str(p)][(case-1)*p:(case-1)*p+case] = np.array([1.,] * case) * 5
         else:
             eta['P'+str(p)] = np.random.binomial(1, sparsity, size=[n_gene]) * 5.
             while np.sum(eta['P'+str(p)]) < 3:
@@ -80,6 +90,18 @@ def return_parameters(name):
     elif name == "demo":
         n_class = 2
         n_gene = 60
+    elif name in ["set0", "set2", "set3"]:
+        n_class = 3
+        n_gene = 6
+    elif name == "set1":
+        n_class = 3
+        n_gene = 26
+    elif name == "set4":
+        n_class = 3
+        n_gene = 3
+    elif name == "set5":
+        n_class = 3
+        n_gene = 4
     
     # Distribution of the examples among the classes
     if name.split("_")[0] == "syn" and name.split("_")[1] == "g" and name.split("_")[2] in ["5", "10"]:
@@ -106,8 +128,16 @@ def return_parameters(name):
             n_pathway = int(2000 / int(name.split("_")[2]))
     elif name == "demo":
         n_pathway = 6
+    elif name in ["set0", "set2", "set3", "set4", "set5"]:
+        n_pathway = 3
+    elif name == "set1":
+        n_pathway = 13
     for c in range(n_class):
         alpha['C' + str(c)] = np.array([1.] * n_pathway)  # each pathway has a priori the same importance
+   # else:
+   #     for c in range(n_class):
+   #         alpha['C' + str(c)] = np.array([0.] * n_pathway)  # each pathway has a priori no importance
+
 
     # Number of overexpressed pathways
     useful_paths = []
@@ -125,6 +155,8 @@ def return_parameters(name):
             P = int(name.split("_")[2])
     elif name == "demo":
         P = 2
+    elif name in ["set0", "set1", "set2", "set3", "set4", "set5"]:
+        P = 1
             
     useful_paths = {}
     for c in range(n_class):
@@ -150,6 +182,15 @@ def return_parameters(name):
         else:
             case = 10
         sparsity = None
+    elif name in [ "set0", "set1", "set2", "set3"]:
+        case = 2
+        sparsity = None
+    elif name == "set4":
+        case = 2
+        sparsity = "overlap"
+    elif name == "set5":
+        case = 2
+        sparsity = "overlap2"
 
     # Drawn gene distribution per pathway
     eta, beta = generate_eta_beta(n_pathway, sparsity, n_gene, case=case)
@@ -158,24 +199,25 @@ def return_parameters(name):
     useful_genes = {}
     for c in range(n_class):
         for P in (useful_paths["C" + str(c)]):
-            useful_genes[P] = np.argwhere(beta[P] != 0).reshape(-1)
+            useful_genes[P] = np.argwhere(eta[P] != 0).reshape(-1)
 
     # Check validity (useful genes must have a drawing probability relatively high)
     for P in useful_genes.keys():
-        print('Pathway', P, end='\r')
         validity = False
-        if sparsity is None:
+        if case != 0:
             min_prop = 0.1 / case
-            print(f"Genes over-expressed in a group containing {case} variables have a drawing probability in this group higher than {min_prop}.")
+            print(f"Group {P} with {case} variables: drawing probability >= {min_prop}.")
         else:
-            min_prop = 0.1 / (sparsity * n_gene)
-            print(f"Genes over-expressed in a group containing about {sparsity * n_gene} variables have a drawing probability in this group higher than {min_prop}.")
+            min_prop = np.round(0.1 / (sparsity * n_gene), 2)
+            print(f"Group {P} with around {np.round(sparsity * n_gene, 2)} variables: drawing probability >= {min_prop}.")
         while not validity:
             if min(beta[P][useful_genes[P]]) >= min_prop:
                     validity = True
             else:
-                eta[P], beta[P] = generate_eta_beta(n_pathway, sparsity, n_gene, case=case)[P]
-                useful_genes[P] = np.argwhere(beta[P] != 0).reshape(-1)
+                temp_eta, temp_beta = generate_eta_beta(n_pathway, sparsity, n_gene, case=case)
+                eta[P] = temp_eta[P]
+                beta[P] = temp_beta[P]
+                useful_genes[P] = np.argwhere(eta[P] != 0).reshape(-1)
             
     return alpha, eta, beta, proportion, n_gene, n_pathway, n_class, useful_paths, useful_genes
 

@@ -32,7 +32,8 @@ print(f'         {name}           ')
 alpha, eta, beta, proportion, n_gene, n_pathway, n_class, useful_paths, useful_genes = return_parameters(name)
 X, y = generate_hierarchical_data(alpha, beta, n_sample, proportion)
 if add_noise:
-    X += np.random.uniform(0, 0.0001, X.shape)
+    # X += np.random.uniform(50000, 100000, X.shape)
+    X += np.random.randn(X.shape[0], X.shape[1]) * 200000
 
 
 # Save
