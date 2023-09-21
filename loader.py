@@ -171,9 +171,9 @@ def load_data(data_path, name):
     Labels are numbers between 0 and the number of classes. The name of the classes are returned in the `class_name` list.
     The names of the features are returned in the `feat_name` list.
     """
-    assert name in ["pancan", "BRCA", "KIRC", 'SIMU1', 'SIMU2', 'SimuA', 'SimuB', 'SimuC', 'demo'] or name[:3] == "syn", "Modify the function load_data to load your own dataset."
-    if name in ["pancan", "BRCA", "KIRC"]:
-        database, label_name = get_TCGA_setting(name)
+    assert name in ["pancan", "BRCA", "KIRC", "SIMU1", "SIMU2", "SimuA", "SimuB", "SimuC", "demo", "demo1", "ttg-all", "ttg-breast", "BRCA-pam"] or name[:3] == "syn" or name[:3] == "set", "Modify the function load_data to load your own dataset."
+    if name in ["pancan", "BRCA", "KIRC", "ttg-all", "ttg-breast", "BRCA-pam"]:
+        database, name, label_name = get_TCGA_setting(name)
         data = TCGA_dataset(data_path, database, name, label_name)
         X = np.zeros((len(data), get_number_features(data)))
         y = np.zeros((len(data))).astype('int64')
@@ -182,7 +182,7 @@ def load_data(data_path, name):
             y[i] += label.numpy()
         class_name = list(data.label_map.keys())
         feat_name = data.genes_IDs
-    elif name in ['SIMU1', 'SIMU2', 'SimuA', 'SimuB', 'SimuC', 'demo'] or name[:3] == "syn":
+    elif name in ['SIMU1', 'SIMU2', 'SimuA', 'SimuB', 'SimuC', 'demo', 'demo1'] or name[:3] == "syn" or name[:3] == "set":
         data = np.load(os.path.join(data_path, f'{name}.npy'), allow_pickle=True).item()
         X = data['X']
         y = data['y']
@@ -258,21 +258,29 @@ def load_dataset(data_path, name, normalize, regroup=True, classes=None):
         
 
 ### Loaders
-def load_dataloader(data_path, name, device, regroup=True):
+def load_dataloader(data_path, name, device, regroup=True, studied_features=None):
     """
     Function returning torch dataloaders from a dataset called `name`. 
-    `regroup` is only used for the simulated datasets containing subclasses (e.g. 'SimuA', 'SimuB', 'SimuC'). 
-    If regroup, the subclasses are regrouped into one class. Otherwise, they appear as different classes. 
+
+    Parameters:
+        regroup  --  True or False. Used only with datasets containing subclasses (e.g. 'SimuA', 'SimuB', 'SimuC'). If regroup, the subclasses are regrouped into one class. Otherwise, they appear as different classes. 
+        studied_features  --  List of features or None. If not None, only the listed features are loaded.
     """
     # Setting
     test_size, random_state = get_split_dataset_setting(name)
     use_mean, use_std, log2, reverse_log2, divide_by_sum, factor = get_data_normalization_parameters(name)
     batch_size = get_loader_setting(name)
     
-    if name in ["pancan", "BRCA", "KIRC"]:
+    if name in ["pancan", "ttg-all", "ttg-breast", "BRCA", "KIRC"]:
         # Load data
-        database, label_name = get_TCGA_setting(name)
+        database, name, label_name = get_TCGA_setting(name)
         data = TCGA_dataset(data_path, database, name, label_name)
+        assert len(np.unique(data.genes_IDs)) == len(data.genes_IDs)
+
+        # Selection of features
+        if studied_features is not None:
+            data.expression = data.expression[studied_features]
+            data.genes_IDs = data.expression.columns.values.tolist()
 
         # Information
         n_class = get_number_classes(data)
@@ -280,6 +288,7 @@ def load_dataloader(data_path, name, device, regroup=True):
         class_name = data.label_key
         feat_name = data.genes_IDs
         n_sample = len(data)
+        assert len(feat_name) == n_feat
         
         # Create train/test loaders
         train_indices, test_indices = split_indices(n_sample, test_size, random_state)
@@ -294,6 +303,13 @@ def load_dataloader(data_path, name, device, regroup=True):
     else:
         # Load data
         X_train, X_test, y_train, y_test, n_class, n_feat, class_name, feat_name = load_dataset(data_path, name, normalize=False, regroup=regroup)
+
+        # Selection of features
+        if studied_features is not None:
+            X_train = X_train[:, studied_features]
+            X_test = X_test[:, studied_features]
+            n_feat = X_train.shape[1]
+            feat_name = feat_name[studied_features]
         
         # Information
         n_sample = len(X_train) + len(X_test)

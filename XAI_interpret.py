@@ -246,12 +246,12 @@ def keep_best_features(nb_per_class, scores):
     n_class = len(scores.keys()) - 1
     indices = []
     for _class in range(n_class):
-        indices.extend(scores[_class]['sorted_indices'][:nb_per_class])
+        indices.extend(np.argsort(-scores[_class]['attr'])[:nb_per_class])  ## scores[_class]['sorted_indices'][:nb_per_class])
     return np.unique(indices)
 
 
 
-# Local representation (per sample)
+# Global representation (all studied examples)
 def get_results_with_best_features_kept_or_removed(model, X, y, K, attr, baseline, classes=[], kept=True, balance=False):
     """
     Compute several metrics measuring the performance of 'model' when the top-k best features are removed (set to 0) or 
@@ -290,10 +290,12 @@ def get_results_with_best_features_kept_or_removed(model, X, y, K, attr, baselin
         n_feat = X.shape[1]
         scores = np.zeros(n_feat)
         for _class in range(n_class):
-            scores += np.mean(np.abs(attr[y.cpu() == _class]), axis=0)
+            scores += np.mean(attr[y.cpu() == _class], axis=0)
+            ## scores += np.mean(np.abs(attr[y.cpu() == _class]), axis=0)
         scores = scores / n_class
     else:
-        scores = np.mean(np.abs(attr), axis=0)
+        scores = np.mean(attr, axis=0)
+        # scores = np.mean(np.abs(attr), axis=0)
     
     if kept:
         indices = np.argsort(-scores)

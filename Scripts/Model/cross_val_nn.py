@@ -41,7 +41,7 @@ save_name = os.path.join(model_name, f"exp_layer_{n_layer}_feat_{n_hidden_feat}"
 
 
 # Dataset
-train_loader, test_loader, n_class, n_feat, class_name, feat_name, _, n_sample = load_dataloader(data_path, name, device, batch_size=32)
+train_loader, test_loader, n_class, n_feat, class_name, feat_name, _, n_sample = load_dataloader(data_path, name, device)
 print(f"In our dataset, we have {n_class} classes and {n_sample} examples. Each example contains {n_feat} features.")
 
 
@@ -53,12 +53,30 @@ model = load_model(model_name, n_feat, n_class, softmax, device, save_path, n_la
 # Optimization
 criterion, optimizer, scheduler, n_epoch = set_optimizer(name, model)
 
-# Cross_validation
+
+# Preparation of the dataset
+## Number of training samples
+n_train_sample = 0
+for sample, label  in train_loader:
+    n_train_sample += len(label)
+print(f"Number of training samples used for cross-validation: {n_train_sample}.")
+## Data
+X = torch.zeros((n_train_sample, n_feat), dtype=sample.dtype)
+y = torch.zeros(n_train_sample, dtype=label.dtype)
+count = 0
+for sample, label in train_loader:
+    batch_size = len(label)
+    X[count:count + batch_size] = sample
+    y[count:count + batch_size] = label
+    count += batch_size
+assert count == n_train_sample
+dataset = custom_dataset(X, y)
+## Split function
 n_split = 4
 splits = StratifiedKFold(n_splits=n_split, shuffle=True, random_state=0)
-dataset = train_loader.dataset
-X, y = get_X_y(dataset)
 
+
+# Cross-validation
 avg_train_balanced_score = 0
 avg_val_balanced_score = 0
 
@@ -72,15 +90,13 @@ for fold, (train_idx, val_idx) in enumerate(splits.split(X, y)):
     val_loader = DataLoader(dataset, batch_size=32, sampler=val_sampler)
     
     # Transformation
-    if name in ['pancan', 'BRCA', 'KIRC']:
-        _, _, log, _sum = get_setting(name)
-    else:
-        log = True
-        _sum = False
-    mean, std = find_mean_std(dataset, train_sampler, device, log, _sum)
-    if name in ['BRCA', 'KIRC', 's1', 's2']:
+    use_mean, use_std, log2, reverse_log2, divide_by_sum, factor = get_data_normalization_parameters(name)
+    mean, std = find_mean_std(dataset, train_sampler, device, log2, reverse_log2, divide_by_sum, factor)
+    if not use_mean:
+        mean = torch.zeros(mean.shape).to(device)
+    if not use_std:
         std = torch.ones(std.shape).to(device)
-    transform = normalize(mean, std, log, _sum)
+    transform = normalize(mean, std, log2, reverse_log2, divide_by_sum, factor)
 
     # Train
     epochs_acc = []

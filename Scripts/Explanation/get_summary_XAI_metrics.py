@@ -86,7 +86,7 @@ print(f"  PGR: {np.round(np.mean(PGR) , 2)} +- {np.round(np.std(PGR) , 2)}")
 
 
 # Summarize FA
-if name not in ['BRCA', 'KIRC', 'pancan']:
+if name not in ['BRCA', 'KIRC', 'pancan', 'ttg-all', 'ttg-breast', 'BRCA-pam']:
     print("")
     print("Feature agreement")
     global_setting = "rank_mean_scores"  # "rank_mean_scores", "intersect_rank_scores"

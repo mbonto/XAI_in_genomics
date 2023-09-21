@@ -30,7 +30,7 @@ create_new_folder(os.path.join(save_path, "graph"))
 
 
 # Load dataset
-X_train, _, _, _, _, _, _, _ = load_dataset(data_path, name, normalize=True)
+X_train, _, y_train, _, _, _, _, _ = load_dataset(data_path, name, normalize=True)
 
 
 # Infer the adjacency matrix between variables
@@ -55,13 +55,12 @@ save_npz(os.path.join(save_path, 'graph', f'{method}_{min_value}_variables'), cs
 
 # Diffusion version
 print("Computing the diffusing matrix between variables...")
-if min_value is not None:
-    if len(A) <= 20000:
-        A = (A > 0) * A
-    else:  # slower but use less memory
-        for i in range(len(A)):
-            print(i, end='\r')
-            A[i, :] = (A[i, :] > 0) * A[i, :]
+if len(A) <= 20000:
+    A = (A > 0) * A
+else:  # slower but use less memory
+    for i in range(len(A)):
+        print(i, end='\r')
+        A[i, :] = (A[i, :] > 0) * A[i, :]
 A = csc_matrix(A)
 D = get_normalized_adjaceny_matrix(A)
 save_npz(os.path.join(save_path, 'graph', f'{method}_{min_value}_variables_diffusion'), D)

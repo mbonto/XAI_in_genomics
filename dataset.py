@@ -19,6 +19,9 @@ def get_possible_classes(database, cancer):
     possible['gdc-OV'] = ['age_at_initial_pathologic_diagnosis', 'sample_type.samples',
                             'neoplasm_histologic_grade', 'primary_diagnosis.diagnoses']
     possible['gdc-LUAD'] = ['sample_type.samples',]
+    possible['legacy-BRCA'] = ['PAM50Call_RNAseq', 'PAM50_mRNA_nature2012', 'sample_type']
+    possible['ttg-ttg-all'] = ['_sample_type', '_primary_site']
+    possible['ttg-ttg-breast'] = ['_sample_type', '_primary_site']
     try:
         possible_classes = possible[f"{database}-{cancer}"]
     except:
@@ -28,18 +31,35 @@ def get_possible_classes(database, cancer):
 
 # Phenotype
 def load_phenotype(data_path, database, cancer):
-    file_path = os.path.join(data_path, database, 'phenotype', '{}_phenotype.tsv.gz'.format(cancer))
     column_name = get_column_name(data_path, database, cancer, 'phenotype')
-    df = pd.read_csv(file_path, compression="gzip", sep="\t", index_col=column_name)
+    if database == "ttg":
+        file_path = os.path.join(data_path, database, 'phenotype', '{}_phenotype.tsv.gz'.format("all"))
+        df = pd.read_csv(file_path, compression="gzip", sep="\t", index_col=column_name, encoding="ISO-8859-1")
+        df.replace('Primary Tumor', 'Tumor', inplace=True)
+        df.replace('Primary Solid Tumor', 'Tumor', inplace=True)
+        df.replace('Normal Tissue', 'Normal', inplace=True)
+        df.replace('Solid Tissue Normal', 'Normal', inplace=True)
+        if cancer == 'ttg-breast':
+            df = df.loc[df['_primary_site'] == 'Breast']
+    else:
+        file_path = os.path.join(data_path, database, 'phenotype', '{}_phenotype.tsv.gz'.format(cancer))
+        df = pd.read_csv(file_path, compression="gzip", sep="\t", index_col=column_name)
+        # Keep samples from primary tumors only
+        if database == "legacy" and cancer == "BRCA":
+            df = df.loc[df["sample_type"] == "Primary Tumor"]
+            df = df.loc[df["PAM50Call_RNAseq"] != "Normal"]
     return df
 
 
 def get_unwanted_labels(database, cancer):
     unwanted = {}
     unwanted['pancan-pancan'] = []
+    unwanted['ttg-ttg-all'] = ['Additional - New Primary', 'Additional Metastatic', 'Cell Line', 'Control Analyte', 'Metastatic', 'Post treatment Blood Cancer - Blood', 'Post treatment Blood Cancer - Bone Marrow', 'Primary Blood Derived Cancer - Bone Marrow', 'Primary Blood Derived Cancer - Peripheral Blood', 'Recurrent Blood Derived Cancer - Bone Marrow', 'Recurrent Blood Derived Cancer - Peripheral Blood', 'Recurrent Solid Tumor', 'Recurrent Tumor']
+    unwanted['ttg-ttg-breast'] = ['Additional - New Primary', 'Additional Metastatic', 'Cell Line', 'Control Analyte', 'Metastatic', 'Post treatment Blood Cancer - Blood', 'Post treatment Blood Cancer - Bone Marrow', 'Primary Blood Derived Cancer - Bone Marrow', 'Primary Blood Derived Cancer - Peripheral Blood', 'Recurrent Blood Derived Cancer - Bone Marrow', 'Recurrent Blood Derived Cancer - Peripheral Blood', 'Recurrent Solid Tumor', 'Recurrent Tumor']
     unwanted['gdc-BRCA'] = ['not reported', 'nan', 'stage x', 'MX', 'NX', 'TX', 'Metastatic']
     unwanted['gdc-KIRC'] = ['Additional - New Primary']
     unwanted['gdc-LUAD'] = ['FFPE Scrolls', 'Recurrent Tumor']
+    unwanted['legacy-BRCA'] = ['nan']
     try:
         unwanted_labels = unwanted[f"{database}-{cancer}"]
     except:
@@ -61,14 +81,58 @@ def clean_labels(label_key, database, cancer):
 
 
 # Gene expression
+def quality_control(data_path, database, cancer, df):
+    """
+    Some samples and some genes are removed from the study.
+
+    Here, we choose to remove:
+      - genes whose expression value is missing for some samples,
+      - genes whose maximal expression level is 0.
+
+    Additionally,
+      - samples listed in "ood_samples.npy",
+      - genes listed in "low_expressed_genes_{cancer}.npy",
+      - genes listed in "constant_genes_{cancer}.npy".
+    In this study, "low_expressed_genes_{cancer}.npy" lists the genes whose level is lower than 5 counts in more than 99% training samples.
+                   "constant_genes_{cancer}.npy" lists the genes that are constant in the training dataset.
+                   "ood_samples.npy" lists the samples whose more than 75% of genes have a zero expression. 
+    To generate these files with different threshold, delete them and use the code in Script/Preprocessing/quality_control.py.
+    """
+    # Remove genes whose expression level is missing for some samples
+    df.dropna(axis=1, inplace=True)
+    # Remove genes whose maximal expression level is 0
+    genes_to_remove = df.columns[df.max() <= 0]
+    df.drop(columns=genes_to_remove, inplace=True)
+    # Remove genes whose expression levels are low
+    if os.path.isfile(os.path.join(data_path, database, "expression", f"low_expressed_genes_{cancer}.npy")):
+        genes_to_remove = list(np.load(os.path.join(data_path, database, "expression", f"low_expressed_genes_{cancer}.npy")))
+        df.drop(columns=genes_to_remove, inplace=True)
+    # Remove genes whose expression levels are constant
+    if os.path.isfile(os.path.join(data_path, database, "expression", f"constant_genes_{cancer}.npy")):
+        genes_to_remove = list(np.load(os.path.join(data_path, database, "expression", f"constant_genes_{cancer}.npy")))
+        df.drop(columns=genes_to_remove, inplace=True)
+    # Remove out-of-distribution samples
+    if os.path.isfile(os.path.join(data_path, database, "expression", f"ood_samples_{cancer}.npy")):
+        samples_to_remove = list(np.load(os.path.join(data_path, database, "expression", f"ood_samples_{cancer}.npy")))
+        df.drop(index=samples_to_remove, inplace=True)
+
+
 def load_expression(data_path, database, cancer):
-    file_path = os.path.join(data_path, database, 'expression', '{}_counts.tsv.gz'.format(cancer))
     column_name = get_column_name(data_path, database, cancer, 'expression')
-    df = pd.read_csv(file_path, compression="gzip", sep="\t", index_col=column_name)
+    if database == 'ttg':
+        file_path = os.path.join(data_path, database, 'expression', '{}_counts.pkl'.format('all'))
+        # Format of the original dataset changed from tsv.gz to pickle to speed up loading time
+        if not os.path.isfile(file_path):  # format of the original dataset changed from tsv.gz to pickle to speed up loading time
+            df = pd.read_csv(os.path.join(data_path, database, 'expression', '{}_counts.tsv.gz'.format('all')), compression="gzip", sep="\t", index_col=column_name)
+            df.to_pickle(file_path)
+        df = pd.read_pickle(file_path)
+    else:
+        file_path = os.path.join(data_path, database, 'expression', '{}_counts.tsv.gz'.format(cancer))
+        df = pd.read_csv(file_path, compression="gzip", sep="\t", index_col=column_name)
     df = df.transpose()
     cols = [c for c in df.columns if c[:2] == '__']
     df = df.drop(labels=cols, axis=1)
-    df = df[df.columns[df.max() > 0]]
+    quality_control(data_path, database, cancer, df)
     if database == 'pancan':
         # Keep samples from primary tumors only
         sample_IDs = df.index.values.tolist()
@@ -97,11 +161,26 @@ def remove_samples(sample_IDs, labels, label_key, database):
         sample_IDs.remove(ID)
         
         
+def remove_genes(data_path, database, cancer, expression):
+    genes_to_remove = get_unwanted_genes(data_path, database, cancer)
+    expression.drop(columns=genes_to_remove, inplace=True)
+
+
+def get_unwanted_genes(data_path, database, cancer):
+    try:
+        genes_to_remove = list(np.load(os.path.join(data_path, database, "expression", "genes_to_remove.npy")))
+        print("The following genes are removed from the study:", genes_to_remove)
+    except:
+        genes_to_remove = []
+    return genes_to_remove
+
 
 def get_column_name(data_path, database, cancer, data_type):
     column = {}
     column['pancan'] = {"expression": "gene_id", "phenotype": "bcr_patient_barcode"}
+    column['ttg'] = {"expression": "sample", "phenotype": "sample"}
     column['gdc'] = {"expression": "Ensembl_ID", "phenotype": "submitter_id.samples", "methylation": "Composite Element REF"}
+    column['legacy'] = {"expression": "sample", "phenotype": "sampleID"}
     try:
         return column[f"{database}"][data_type]
     except KeyError:
@@ -122,32 +201,36 @@ class TCGA_dataset(torch.utils.data.Dataset):
         # Load
         self.expression = load_expression(data_path, database, cancer)
         
-        # Remove genes whose expression value is missing for some samples
-        self.expression = self.expression.dropna(axis=1)
-        
         # Extract the IDs of the samples (corresponding to individuals)
         self.sample_IDs = self.expression.index.values.tolist()
-        
-        # Extract the IDs of the genes
-        self.genes_IDs = self.expression.columns.values.tolist()
         
         
         # Phenotype
         # Load
         phenotype = load_phenotype(data_path, database, cancer)
         
-        # Retrieve the column corresponding to the labels to classify.
+        # Retrieve the column corresponding to the labels to classify
         self.labels = phenotype[label_name]  
         
-        # Remove unwanted labels and associate each remaining label with a number from 0 to number of classes - 1.
+        # Remove unwanted labels and associate each remaining label with a number from 0 to number of classes - 1
         label_key = sorted(np.unique(list(self.labels.values)))
         self.label_key = clean_labels(label_key, database, cancer)
         self.label_map = dict(zip(self.label_key, range(len(self.label_key))))
         self.inv_label_map = {v: k for k, v in self.label_map.items()}
         
-        
-        # Remove the IDs of the samples which have no label.
+        # Remove the IDs of the samples which have no label
         remove_samples(self.sample_IDs, self.labels, self.label_key, database)
+
+        # Remove the samples which have no label
+        self.expression = self.expression[self.expression.index.isin(self.sample_IDs)]
+
+        
+        # Remove some of the genes (optional)
+        remove_genes(data_path, database, cancer, self.expression)
+
+        # Extract the IDs of the genes
+        self.genes_IDs = self.expression.columns.values.tolist()
+
 
     def __len__(self):
         "Total number of samples in the dataset."

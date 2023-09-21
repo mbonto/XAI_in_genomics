@@ -43,6 +43,10 @@ X, y_pred, y, _, _, _, _ = load_attributions(XAI_method, save_path, set_name)
 X = X[np.argwhere(y_pred == y).reshape(-1)]
 y = y[np.argwhere(y_pred == y).reshape(-1)]
 
+## 
+# X = X[np.argwhere(y == 0).reshape(-1)]
+# y = y[np.argwhere(y == 0).reshape(-1)]
+
 
 # Infer the adjacency matrix between variables
 print("Computing the correlation matrix between variables...")
@@ -66,13 +70,12 @@ save_npz(os.path.join(save_path, "graph", f'{set_name}_{method}_{min_value}_vari
 
 # Diffusion version
 print("Computing the diffusing matrix between variables...")
-if min_value is not None:
-    if len(A) <= 20000:
-        A = (A > 0) * A
-    else:  # slower but use less memory
-        for i in range(len(A)):
-            print(i, end='\r')
-            A[i, :] = (A[i, :] > 0) * A[i, :]
+if len(A) <= 20000:
+    A = (A > 0) * A
+else:  # slower but use less memory
+    for i in range(len(A)):
+        print(i, end='\r')
+        A[i, :] = (A[i, :] > 0) * A[i, :]
 A = csc_matrix(A)
 D = get_normalized_adjaceny_matrix(A)
 save_npz(os.path.join(save_path, "graph", f'{set_name}_{method}_{min_value}_variables_diffusion'), D)

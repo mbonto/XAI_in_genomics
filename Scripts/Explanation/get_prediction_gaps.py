@@ -129,7 +129,7 @@ for _type in types:
 
 # ... random order
 PGRs = []
-for t in range(30):
+for t in range(10):
     indices = get_features_order(attr, _type="random")
     PGR = prediction_gap_with_dataloader(model, loader, transform, attr, gap, baseline, studied_class, indices, None, y_true, y_pred)
     PGRs.append(np.round(np.mean(list(PGR.values())) * 100, 2))

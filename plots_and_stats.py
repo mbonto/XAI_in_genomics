@@ -152,7 +152,7 @@ def plot_class_imbalance(data, label_name, save_path=None):
     classes = np.zeros(len(data.label_key))
     for X, y in data:
         classes[y] += 1
-    xlabels = {"type": "Cancer class", "sample_type.samples": "Type"}
+    xlabels = {"type": "Cancer class", "sample_type.samples": "Type", "_sample_type": "Type", "PAM50Call_RNAseq": "PAM50 classes"}
     plt.figure(figsize=(20, 3))
     sns.barplot(x=[label for label in data.label_key], y=[classes[data.label_map[label]] for label in data.label_key], order=np.sort([label for label in data.label_key]))
     plt.tick_params(axis='both', which='major', labelsize=11)

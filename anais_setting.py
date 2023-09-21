@@ -1,6 +1,6 @@
 # Paths
 def set_path():
-    path = '/local/mbontono/data/'  # absolute path of the data folder
+    path = '/nfs_home/haget/XAI_in_progress/data' # '/local/mbontono/data/'  # absolute path of the data folder
     return path
 
 
@@ -15,19 +15,10 @@ from torch.optim.lr_scheduler import MultiStepLR
 def get_hyperparameters(name, model_name):
     n_layer = None
     n_hidden_feat = None
-    if model_name == "LR_L1_penalty":
-        if name in ["ttg-breast", "BRCA-pam", "BRCA", "KIRC"]:
-            C = 0.1
-            return C
-        elif name in ["ttg-all", "pancan"]:
-            C = 1
-    elif model_name == "MLP":
-        if name in ["pancan", "KIRC", "BRCA", "SIMU1", "SIMU2", "SimuA", "SimuB", "SimuC", "demo", "demo1", "ttg-all", "BRCA-pam"]:
+    if model_name == "MLP":
+        if name in ["pancan", "KIRC", "BRCA", "SIMU1", "SIMU2", "SimuA", "SimuB", "SimuC", "demo"]:
             n_layer = 1
             n_hidden_feat = 20
-        elif name in ["ttg-breast"]:
-            n_layer = 1
-            n_hidden_feat = 10
         else:
             n_layer = 1
             n_hidden_feat = 20
@@ -57,12 +48,6 @@ def get_save_path(name, code_path):
         save_path = os.path.join(code_path, 'Gdc', 'Results', 'KIRC')
     elif name == 'LUAD':
         save_path = os.path.join(code_path, 'Gdc', 'Results', 'LUAD')
-    elif name == 'BRCA-pam':
-        save_path = os.path.join(code_path, 'Legacy', 'Results', 'BRCA-pam')
-    elif name == 'ttg-all':
-        save_path = os.path.join(code_path, 'TTG', 'Results', 'all')
-    elif name == 'ttg-breast':
-        save_path = os.path.join(code_path, 'TTG', 'Results', 'breast')
     else:
         save_path = os.path.join(code_path, 'Simulation', 'Results', name)
     return save_path
@@ -70,7 +55,7 @@ def get_save_path(name, code_path):
 
 def get_data_path(name):
     data_path = set_path()
-    if name in ["pancan", "BRCA", "KIRC", "ttg-all", "ttg-breast", "BRCA-pam", "tcga"]:
+    if name in ["pancan", "BRCA", "KIRC",]:
         data_path = os.path.join(data_path, 'tcga')
     else:
         data_path = os.path.join(data_path, 'simulation')
@@ -78,21 +63,14 @@ def get_data_path(name):
 
 
 def get_TCGA_setting(name):
-    assert name in ["pancan", "BRCA", "KIRC", "ttg-all", "ttg-breast", "BRCA-pam"], "Name should be pancan, ttg-all, ttg-breast, BRCA-pam, BRCA or KIRC"
+    assert name in ["pancan", "BRCA", "KIRC"], "Name should be pancan, BRCA or KIRC"
     if name == "pancan":
         database = "pancan"
         label_name = "type"
-    elif name in ["ttg-all", "ttg-breast"]:
-        database = "ttg"
-        label_name = "_sample_type"
     elif name in ["BRCA", "KIRC"]:
         database = "gdc"
         label_name = "sample_type.samples"
-    elif name == "BRCA-pam":
-        database = "legacy"
-        label_name = "PAM50Call_RNAseq"
-        name = "BRCA"
-    return database, name, label_name
+    return database, label_name
     
 
 def get_data_normalization_parameters(name):
@@ -106,8 +84,6 @@ def get_data_normalization_parameters(name):
     
     if name == 'pancan':
         log2 = True
-    elif name in ['ttg-all', 'ttg-breast', 'BRCA-pam']:
-        pass
     elif name in ['BRCA', 'KIRC']:
         log2 = True
         reverse_log2 = True
@@ -136,15 +112,9 @@ def get_XAI_hyperparameters(name, n_class):
     studied_class is a list of numbers between 0 and n_class - 1. It contains the classes of the examples for which the
     IG scores will be computed.    
     """
-    if name in ["BRCA", "KIRC", "SimuA", "SimuB", "SimuC", "demo"]:
+    if name in ['BRCA', 'KIRC', 'SimuA', 'SimuB', 'SimuC', 'demo']:
         base_class = 1
         studied_class = [0,]
-    elif name in ["ttg-all", "ttg-breast"]:
-        base_class = 0
-        studied_class = [1,]
-    # elif name in ["BRCA-pam"]:
-    #     base_class = 4
-    #     studied_class = [0, 1, 2, 3]
     elif name.split("_")[0] == "syn":
         base_class = None
         studied_class = [0,]

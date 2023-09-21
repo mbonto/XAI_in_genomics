@@ -116,14 +116,14 @@ scores = np.load(os.path.join(save_path, save_name, XAI_method, "{}_scores_with_
 classes = []  # precision and recall are computed for each class in this list
 
 # Performance when the K most important features of each class are kept/modified
-K = np.arange(1, n_feat, 1)  # np.concatenate((np.arange(1, 10, 1), np.arange(10, 200, 10), np.arange(200, n_feat, 100)))
+K = np.concatenate((np.arange(1, 10, 1), np.arange(10, 200, 10), np.arange(200, n_feat, 100)))  # np.arange(1, n_feat, 1)
 ## First, the K most important are kept.
 res_cls_best, n_kept_cls_best, kept_feat_cls_best = get_results_per_class(model, X, Y, K, scores, 'keep_best', baseline, classes)
 ## Then, the K most important are modified. 
 res_cls_worst, n_kept_cls_worst, kept_feat_cls_worst = get_results_per_class(model, X, Y, K[:-1], scores, 'remove_best', baseline, classes)
 
-# Performance when the K most important features of each example are kept/modified
-K = np.arange(1, n_feat, 1)  # np.concatenate((np.arange(1, 10, 1), np.arange(10, 100, 10), np.arange(100, n_feat, 100)))
+# Performance when the K most important features identified forall studied examples are kept/modified
+K = np.concatenate((np.arange(1, 10, 1), np.arange(10, 100, 10), np.arange(100, n_feat, 100)))  # np.arange(1, n_feat, 1)
 ## Average over all examples adjusted by the proportion of each class
 res_bal_best, kept_feat_bal_best = get_results_with_best_features_kept_or_removed(model, X, Y, K, attr, baseline, classes, kept=True, balance=True)
 res_bal_worst, kept_feat_bal_worst = get_results_with_best_features_kept_or_removed(model, X, Y, K, attr, baseline, classes, kept=False, balance=True)
@@ -161,6 +161,7 @@ np.save(os.path.join(save_path, save_name, XAI_method, "figures", "Curves_on_{}_
 
 
 # Plot
+# results = np.load(os.path.join(save_path, save_name, XAI_method, "figures", "Curves_on_{}_with_{}.npy".format(set_name, XAI_method)), allow_pickle=True).item()
 save_file = os.path.join(save_path, save_name, XAI_method, 'figures', f'Curves_on_{set_name}_with_{XAI_method}.png')
 xlabel = "Number of features kept"
 ylabel = "Balanced accuracy (%)"

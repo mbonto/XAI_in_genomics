@@ -12,26 +12,27 @@ def plot_TCGA_results(results, xlabel, ylabel, save_name=None, show=True, stats=
     # Absolute importance per class (decreasing)
     ind = results['indices_cls_best']
     res = results['res_cls_best']['balanced_accuracy']
-    ax.plot(ind, res, '-', color='darkorchid', label="Decreasing")
+    ax.plot(ind, res, '-', color='darkorchid', label="Most important kept first")
     
-    # Balanced absolute importance (decreasing)
+    # Global absolute importance (decreasing)
     ind = results['indices']
-    res = results['res_bal_best']['balanced_accuracy']
-    ax.plot(ind, res, '-', color='orchid', label="Decreasing")
+    res = results['res_best']['balanced_accuracy']
+    ax.plot(ind, res, '-', color='orchid', label="Most important kept first")
     
     # Random
     ind = results['indices']
     res = results['res_rand']['balanced_accuracy']    
-    ax.errorbar(ind, res['mean'], fmt='--', yerr=res['std'], color='sienna', label="Random")
+    ax.errorbar(ind, res['mean'], fmt='--', yerr=res['std'], color='sienna', label="Random order")
     ind = results['indices_cls_best']
     res = results['res_rand_wo_cls_best']['balanced_accuracy']
     ind = ind[:len(res['mean'])]
-    ax.plot(ind, res['mean'], ':', color='sienna', label="Random among unimportant")
+    ax.errorbar(ind, res['mean'], fmt=':', yerr=res['std'], color='sienna', label="Random order without those selected\nas important for the classes")
+    # ax.plot(ind, res['mean'], ':', color='sienna', label="Random among unimportant")
     
-    # Balanced absolute importance (increasing)
+    # Global absolute importance (increasing)
     ind = results['indices']
-    res = results['res_bal_worst']['balanced_accuracy']
-    ax.plot(ind, res, '-', color='orange', label="Increasing")
+    res = results['res_worst']['balanced_accuracy']
+    ax.plot(ind, res, '-', color='orange', label="Less important kept first")
     
     # Absolute importance per class (increasing)
     ind = results['indices_cls_worst']
@@ -39,12 +40,12 @@ def plot_TCGA_results(results, xlabel, ylabel, save_name=None, show=True, stats=
     ## Remove the point where all features are set to 0:
     ind = np.array(ind)
     ind[np.argwhere(np.array(ind)==0)] = 1   # enables to keep the continuity of the curve on the plot
-    ax.plot(ind, res, '-', color='orangered', label="Increasing")
+    ax.plot(ind, res, '-', color='orangered', label="Less important kept first")
     
     ax.set_xlabel(xlabel)
     if ylabel is not None:
         ax.set_ylabel(ylabel)
-    ax.legend(fontsize=12)
+    # ax.legend(fontsize=12)
     plt.xscale('log')
     ax.xaxis.set_major_formatter(FormatStrFormatter('%.0f'))
     plt.tight_layout()
@@ -52,7 +53,7 @@ def plot_TCGA_results(results, xlabel, ylabel, save_name=None, show=True, stats=
     # Better order the curves in the legend
     handles, labels = plt.gca().get_legend_handles_labels()
     extra = Rectangle((0, 0), 1, 1, fc="w", fill=False, edgecolor='none', linewidth=0)
-    plt.legend([extra, handles[1], handles[3], extra, extra, handles[0], handles[4], extra, handles[5], handles[2]], ["Importance", labels[1], labels[3], " ", "Importance per class", labels[0], labels[4], " ", labels[5], labels[2]])
+    # plt.legend([extra, handles[1], handles[2], extra, extra, handles[0], handles[3], extra, handles[4], handles[5]], ["Global ranking $\phi^g$", labels[1], labels[2], " ", "Ranking per class $\phi^c$", labels[0], labels[3], " ", labels[4], labels[5]])
     
     if save_name:
         plt.savefig(save_name, bbox_inches='tight', dpi=150)

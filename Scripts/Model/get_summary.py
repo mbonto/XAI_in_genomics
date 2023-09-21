@@ -10,7 +10,7 @@ from setting import *
 # Arguments
 argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="Dataset name")
-argParser.add_argument("-m", "--model", type=str, help="Model name (LR, MLP, DiffuseLR, DiffuseMLP)")
+argParser.add_argument("-m", "--model", type=str, help="Model name (LR, MLP, DiffuseLR, DiffuseMLP, LR_L1_penalty)")
 argParser.add_argument("--n_repet", type=int, help="Results are averaged for all experiments between 1 and `n_repet`")
 args = argParser.parse_args()
 name = args.name
@@ -26,6 +26,8 @@ data_path = get_data_path(name)
 exps = np.arange(1, n_repet+1)
 test_acc = []
 train_acc = []
+duration = []
+n_non_zero = []
 
 for exp in exps:
     save_name = os.path.join(model_name, f"exp_{exp}")
@@ -39,7 +41,14 @@ for exp in exps:
                 train_acc.append(float(line[1]))
             if line[0] == 'balanced_test':
                 test_acc.append(float(line[1]))
+            if line[0] == 'duration':
+                duration.append(float(line[1]))
+            if line[0] == '# non-zero coefficients':
+                n_non_zero.append(float(line[1]))
 
 assert len(test_acc) == len(exps)
 print(f"Train accuracy with {model_name} on {name}: {np.round(np.mean(train_acc) , 2)} +- {np.round(np.std(train_acc) , 2)}")   
 print(f"Balanced test accuracy with {model_name} on {name}: {np.round(np.mean(test_acc) , 2)} +- {np.round(np.std(test_acc) , 2)}")   
+print(f"Training duration: {np.round(np.mean(duration) , 2)} +- {np.round(np.std(duration) , 2)}") 
+if model_name == "LR_L1_penalty":
+    print(f"# non-zero coefficients: {np.round(np.mean(n_non_zero) , 2)} +- {np.round(np.std(n_non_zero) , 2)}")   

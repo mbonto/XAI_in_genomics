@@ -8,7 +8,7 @@ from download_data import *
 
 
 # Download
-data_path = os.path.join(set_path(), "tcga")
+data_path = get_data_path("tcga")
 database = "gdc"
 ## cancers = read_file(os.path.join(data_path, "cancers"))
 cancers = ["BRCA", ]  # "KIRC"
