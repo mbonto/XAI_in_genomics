@@ -18,9 +18,9 @@ def get_hyperparameters(name, model_name):
     if model_name == "LR_L1_penalty":
         if name in ["ttg-breast", "BRCA-pam", "BRCA", "KIRC"]:
             C = 0.1
-            return C
         elif name in ["ttg-all", "pancan"]:
-            C = 1
+            C = 1.
+        return C
     elif model_name == "MLP":
         if name in ["pancan", "KIRC", "BRCA", "SIMU1", "SIMU2", "SimuA", "SimuB", "SimuC", "demo", "demo1", "ttg-all", "BRCA-pam"]:
             n_layer = 1
@@ -102,18 +102,19 @@ def get_data_normalization_parameters(name):
     log2 = False
     reverse_log2 = False
     divide_by_sum = False
-    factor = None
+    factor = 10**6  # only used when divide_by_sum is True. The expression of each gene is divided by the total expression in the sample and multiplied by `factor`.
     
     if name == 'pancan':
+        divide_by_sum = True
         log2 = True
     elif name in ['ttg-all', 'ttg-breast', 'BRCA-pam']:
-        pass
-    elif name in ['BRCA', 'KIRC']:
-        log2 = True
         reverse_log2 = True
         divide_by_sum = True
-        factor = 10**6
-        use_std = False
+        log2 = True
+    elif name in ['BRCA', 'KIRC']:
+        reverse_log2 = True
+        divide_by_sum = True
+        log2 = True
     return use_mean, use_std, log2, reverse_log2, divide_by_sum, factor
 
 

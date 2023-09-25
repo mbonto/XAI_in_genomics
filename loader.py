@@ -165,7 +165,7 @@ class normalize(nn.Module):
 
 
 ### Datasets
-def load_data(data_path, name):
+def load_data(data_path, name, weakly_expressed_genes_removed=True, ood_samples_removed=True):
     """
     Load all examples of the dataset called `name` stored in `data_path` in a data matrix `X` and a label matrix `y`.
     Labels are numbers between 0 and the number of classes. The name of the classes are returned in the `class_name` list.
@@ -174,7 +174,7 @@ def load_data(data_path, name):
     assert name in ["pancan", "BRCA", "KIRC", "SIMU1", "SIMU2", "SimuA", "SimuB", "SimuC", "demo", "demo1", "ttg-all", "ttg-breast", "BRCA-pam"] or name[:3] == "syn" or name[:3] == "set", "Modify the function load_data to load your own dataset."
     if name in ["pancan", "BRCA", "KIRC", "ttg-all", "ttg-breast", "BRCA-pam"]:
         database, name, label_name = get_TCGA_setting(name)
-        data = TCGA_dataset(data_path, database, name, label_name)
+        data = TCGA_dataset(data_path, database, name, label_name, weakly_expressed_genes_removed, ood_samples_removed)
         X = np.zeros((len(data), get_number_features(data)))
         y = np.zeros((len(data))).astype('int64')
         for i, (sample, label) in enumerate(data):
@@ -208,7 +208,7 @@ def split_data_from_indices(X, y, train_indices, test_indices):
     return X[train_indices], X[test_indices], y[train_indices], y[test_indices]
 
 
-def load_dataset(data_path, name, normalize, regroup=True, classes=None):
+def load_dataset(data_path, name, normalize, regroup=True, classes=None, weakly_expressed_genes_removed=True, ood_samples_removed=True):
     """
     Load data and split them into a training set and a test set.
     
@@ -219,7 +219,7 @@ def load_dataset(data_path, name, normalize, regroup=True, classes=None):
         classes  --  None or list of integers. If None, all classes are considered. Otherwise, only the elements belonging to the listed classes are kept.
     """  
     # Load data
-    X, y, class_name, feat_name = load_data(data_path, name)
+    X, y, class_name, feat_name = load_data(data_path, name, weakly_expressed_genes_removed, ood_samples_removed)
 
     # Create train/test sets
     test_size, random_state = get_split_dataset_setting(name)
@@ -258,7 +258,7 @@ def load_dataset(data_path, name, normalize, regroup=True, classes=None):
         
 
 ### Loaders
-def load_dataloader(data_path, name, device, regroup=True, studied_features=None):
+def load_dataloader(data_path, name, device, regroup=True, studied_features=None, weakly_expressed_genes_removed=True, ood_samples_removed=True):
     """
     Function returning torch dataloaders from a dataset called `name`. 
 
@@ -274,7 +274,7 @@ def load_dataloader(data_path, name, device, regroup=True, studied_features=None
     if name in ["pancan", "ttg-all", "ttg-breast", "BRCA", "KIRC"]:
         # Load data
         database, name, label_name = get_TCGA_setting(name)
-        data = TCGA_dataset(data_path, database, name, label_name)
+        data = TCGA_dataset(data_path, database, name, label_name, weakly_expressed_genes_removed, ood_samples_removed)
         assert len(np.unique(data.genes_IDs)) == len(data.genes_IDs)
 
         # Selection of features

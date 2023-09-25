@@ -81,7 +81,7 @@ def clean_labels(label_key, database, cancer):
 
 
 # Gene expression
-def quality_control(data_path, database, cancer, df):
+def quality_control(data_path, database, cancer, df, weakly_expressed_genes_removed, ood_samples_removed):
     """
     Some samples and some genes are removed from the study.
 
@@ -90,11 +90,11 @@ def quality_control(data_path, database, cancer, df):
       - genes whose maximal expression level is 0.
 
     Additionally,
-      - samples listed in "ood_samples.npy",
-      - genes listed in "low_expressed_genes_{cancer}.npy",
-      - genes listed in "constant_genes_{cancer}.npy".
-    In this study, "low_expressed_genes_{cancer}.npy" lists the genes whose level is lower than 5 counts in more than 99% training samples.
-                   "constant_genes_{cancer}.npy" lists the genes that are constant in the training dataset.
+      - samples listed in "ood_samples.npy" when ood_samples_removed is True,
+      - genes listed in "low_expressed_genes_{cancer}.npy" when  weakly_expressed_genes_removed is True.
+      # - genes listed in "constant_genes_{cancer}.npy".
+    In this study, "low_expressed_genes_{cancer}.npy" lists the genes whose level is lower than 5 counts in more than 75% training samples of each class.
+                   # "constant_genes_{cancer}.npy" lists the genes that are constant in the training dataset.
                    "ood_samples.npy" lists the samples whose more than 75% of genes have a zero expression. 
     To generate these files with different threshold, delete them and use the code in Script/Preprocessing/quality_control.py.
     """
@@ -104,20 +104,29 @@ def quality_control(data_path, database, cancer, df):
     genes_to_remove = df.columns[df.max() <= 0]
     df.drop(columns=genes_to_remove, inplace=True)
     # Remove genes whose expression levels are low
-    if os.path.isfile(os.path.join(data_path, database, "expression", f"low_expressed_genes_{cancer}.npy")):
-        genes_to_remove = list(np.load(os.path.join(data_path, database, "expression", f"low_expressed_genes_{cancer}.npy")))
-        df.drop(columns=genes_to_remove, inplace=True)
+    if weakly_expressed_genes_removed:
+        try:
+            genes_to_remove = list(np.load(os.path.join(data_path, database, "expression", f"low_expressed_genes_{cancer}.npy")))
+            df.drop(columns=genes_to_remove, inplace=True)
+            print(f"{len(genes_to_remove)} weakly expressed genes are removed of the dataset.")
+        except:
+            print(f"The file low_expressed_genes_{cancer}.npy has not been generated. Please, run quality_control.py stored in Scripts/Preprocessing.")
     # Remove genes whose expression levels are constant
-    if os.path.isfile(os.path.join(data_path, database, "expression", f"constant_genes_{cancer}.npy")):
-        genes_to_remove = list(np.load(os.path.join(data_path, database, "expression", f"constant_genes_{cancer}.npy")))
-        df.drop(columns=genes_to_remove, inplace=True)
+    # if os.path.isfile(os.path.join(data_path, database, "expression", f"constant_genes_{cancer}.npy")):
+    #     genes_to_remove = list(np.load(os.path.join(data_path, database, "expression", f"constant_genes_{cancer}.npy")))
+    #     df.drop(columns=genes_to_remove, inplace=True)
     # Remove out-of-distribution samples
-    if os.path.isfile(os.path.join(data_path, database, "expression", f"ood_samples_{cancer}.npy")):
-        samples_to_remove = list(np.load(os.path.join(data_path, database, "expression", f"ood_samples_{cancer}.npy")))
-        df.drop(index=samples_to_remove, inplace=True)
+    if ood_samples_removed:
+        try:
+            samples_to_remove = list(np.load(os.path.join(data_path, database, "expression", f"ood_samples_{cancer}.npy")))
+            if len(samples_to_remove) != 0:
+                df.drop(index=samples_to_remove, inplace=True)
+                print(f"{len(samples_to_remove)} samples are removed.")
+        except:
+            print(f"The file ood_samples_{cancer}.npy has not been generated. Please, run quality_control.py stored in Scripts/Preprocessing.")
 
 
-def load_expression(data_path, database, cancer):
+def load_expression(data_path, database, cancer, weakly_expressed_genes_removed, ood_samples_removed):
     column_name = get_column_name(data_path, database, cancer, 'expression')
     if database == 'ttg':
         file_path = os.path.join(data_path, database, 'expression', '{}_counts.pkl'.format('all'))
@@ -132,7 +141,7 @@ def load_expression(data_path, database, cancer):
     df = df.transpose()
     cols = [c for c in df.columns if c[:2] == '__']
     df = df.drop(labels=cols, axis=1)
-    quality_control(data_path, database, cancer, df)
+    quality_control(data_path, database, cancer, df, weakly_expressed_genes_removed, ood_samples_removed)
     if database == 'pancan':
         # Keep samples from primary tumors only
         sample_IDs = df.index.values.tolist()
@@ -161,18 +170,18 @@ def remove_samples(sample_IDs, labels, label_key, database):
         sample_IDs.remove(ID)
         
         
-def remove_genes(data_path, database, cancer, expression):
-    genes_to_remove = get_unwanted_genes(data_path, database, cancer)
-    expression.drop(columns=genes_to_remove, inplace=True)
+# def remove_genes(data_path, database, cancer, expression):
+#     genes_to_remove = get_unwanted_genes(data_path, database, cancer)
+#     expression.drop(columns=genes_to_remove, inplace=True)
 
 
-def get_unwanted_genes(data_path, database, cancer):
-    try:
-        genes_to_remove = list(np.load(os.path.join(data_path, database, "expression", "genes_to_remove.npy")))
-        print("The following genes are removed from the study:", genes_to_remove)
-    except:
-        genes_to_remove = []
-    return genes_to_remove
+# def get_unwanted_genes(data_path, database, cancer):
+#     try:
+#         genes_to_remove = list(np.load(os.path.join(data_path, database, "expression", "genes_to_remove.npy")))
+#         print("The following genes are removed from the study:", genes_to_remove)
+#     except:
+#         genes_to_remove = []
+#     return genes_to_remove
 
 
 def get_column_name(data_path, database, cancer, data_type):
@@ -190,7 +199,7 @@ def get_column_name(data_path, database, cancer, data_type):
 # Loader
 class TCGA_dataset(torch.utils.data.Dataset):
     "Create a dataset containing data from TCGA."
-    def __init__(self, data_path, database, cancer, label_name):
+    def __init__(self, data_path, database, cancer, label_name, weakly_expressed_genes_removed=True, ood_samples_removed=True):
         self.data_path = data_path
         self.database = database
         self.cancer = cancer
@@ -199,7 +208,7 @@ class TCGA_dataset(torch.utils.data.Dataset):
         
         # Gene expression
         # Load
-        self.expression = load_expression(data_path, database, cancer)
+        self.expression = load_expression(data_path, database, cancer, weakly_expressed_genes_removed, ood_samples_removed)
         
         # Extract the IDs of the samples (corresponding to individuals)
         self.sample_IDs = self.expression.index.values.tolist()
@@ -226,7 +235,7 @@ class TCGA_dataset(torch.utils.data.Dataset):
 
         
         # Remove some of the genes (optional)
-        remove_genes(data_path, database, cancer, self.expression)
+        # remove_genes(data_path, database, cancer, self.expression)
 
         # Extract the IDs of the genes
         self.genes_IDs = self.expression.columns.values.tolist()
