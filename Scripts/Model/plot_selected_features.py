@@ -12,7 +12,7 @@ from sklearn.metrics import jaccard_score
 from setting import *
 from utils import *
 from loader import *
-from feature_selection import *
+# from feature_selection import *
 set_pyplot()
 
 
@@ -29,6 +29,10 @@ data_path = get_data_path(name)
 
 
 # Load data
+if name in ["pancan", "BRCA-pam"]:
+    use_DE = False
+else:
+    use_DE = True
 feat_name = np.array(json.load(open(os.path.join(save_path, "genesIds.txt"))))
 n_feat = len(feat_name)
 order_var = np.load(os.path.join(save_path, "order", "order_var.npy"))
@@ -36,17 +40,20 @@ order_PCA_PC1 = np.load(os.path.join(save_path, "order", "order_PCA_PC1.npy"))
 order_F = np.load(os.path.join(save_path, "order", "order_F.npy"))
 order_MI = np.load(os.path.join(save_path, "order", "order_MI.npy"))
 order_L1 = np.load(os.path.join(save_path, "order", "order_L1_exp_1.npy"))
-order_limma = np.load(os.path.join(save_path, "order", "order_limma.npy"), allow_pickle=True)
-order_DE = np.load(os.path.join(save_path, "order", "order_DESeq2.npy"), allow_pickle=True) 
-order_IG = np.load(os.path.join(save_path, "order", "order_IG.npy"), allow_pickle=True) 
+# order_limma = np.load(os.path.join(save_path, "order", "order_limma.npy"), allow_pickle=True)
+if use_DE:
+    order_DE = np.load(os.path.join(save_path, "order", "order_DESeq2.npy"), allow_pickle=True) 
+order_IG = np.load(os.path.join(save_path, "order", "order_IG_set_train_exp_1.npy"), allow_pickle=True) 
+
 
 assert len(order_var) == n_feat
 assert len(order_PCA_PC1) == n_feat
 assert len(order_F) == n_feat
 assert len(order_MI) == n_feat
 assert len(order_L1) == n_feat
-assert len(order_limma) == n_feat
-assert len(order_DE) == n_feat
+# assert len(order_limma) == n_feat
+if use_DE:
+    assert len(order_DE) == n_feat
 assert len(order_IG) == n_feat
 
 
@@ -60,7 +67,7 @@ avg_jaccard_scores_F = []
 avg_jaccard_scores_MI = []
 # avg_jaccard_scores_chi2 = []
 avg_jaccard_scores_L1 = []
-avg_jaccard_scores_limma = []
+# avg_jaccard_scores_limma = []
 avg_jaccard_scores_DE = []
 # avg_jaccard_scores_Tree = []
 
@@ -72,8 +79,9 @@ for n in n_args:
     set_MI = set(order_MI[:n])
     # set_chi2 = set(order_chi2[:n])
     set_L1 = set(order_L1[:n])
-    set_limma = set(order_limma[:n])
-    set_DE = set(order_DE[:n])
+    # set_limma = set(order_limma[:n])
+    if use_DE:
+        set_DE = set(order_DE[:n])
     # set_Tree = set(order_Tree[:n])
 
     avg_jaccard_scores_var.append(len(list(set_IG.intersection(set_var))) / n)
@@ -82,20 +90,31 @@ for n in n_args:
     avg_jaccard_scores_MI.append(len(list(set_IG.intersection(set_MI))) / n)
     # avg_jaccard_scores_chi2.append(len(list(set_IG.intersection(set_chi2))) / n)
     avg_jaccard_scores_L1.append(len(list(set_IG.intersection(set_L1))) / n)
-    avg_jaccard_scores_DE.append(len(list(set_IG.intersection(set_DE))) / n)
-    avg_jaccard_scores_limma.append(len(list(set_IG.intersection(set_limma))) / n)
+    if use_DE:
+        avg_jaccard_scores_DE.append(len(list(set_IG.intersection(set_DE))) / n)
+    # avg_jaccard_scores_limma.append(len(list(set_IG.intersection(set_limma))) / n)
     # avg_jaccard_scores_Tree.append(len(list(set_IG.intersection(set_Tree))) / n)
 
 
 # Save the jaccard scores 
-jaccard_all_scores = {'var': avg_jaccard_scores_var, 
+if use_DE:
+    jaccard_all_scores = {'var': avg_jaccard_scores_var, 
                       'PCA': avg_jaccard_scores_PCA, 
                       'F': avg_jaccard_scores_F, 
                       'MI': avg_jaccard_scores_MI, 
                       # 'chi2': avg_jaccard_scores_chi2,
                       'L1': avg_jaccard_scores_L1,
-                      'limma': avg_jaccard_scores_limma,
+                      # 'limma': avg_jaccard_scores_limma,
                       'DE': avg_jaccard_scores_DE,}
+                      # 'Tree': avg_jaccard_scores_Tree}
+else:
+    jaccard_all_scores = {'var': avg_jaccard_scores_var, 
+                      'PCA': avg_jaccard_scores_PCA, 
+                      'F': avg_jaccard_scores_F, 
+                      'MI': avg_jaccard_scores_MI, 
+                      # 'chi2': avg_jaccard_scores_chi2,
+                      'L1': avg_jaccard_scores_L1,}
+                      # 'limma': avg_jaccard_scores_limma,
                       # 'Tree': avg_jaccard_scores_Tree}
 create_new_folder(os.path.join(save_path, "figures"))
 np.save(os.path.join(save_path, "figures", "jaccard_all_scores.npy"), jaccard_all_scores)
@@ -108,8 +127,9 @@ plt.plot(n_args, avg_jaccard_scores_PCA, 'x-', label = "vs PCA")
 plt.plot(n_args, avg_jaccard_scores_F, 'x-', label = "vs F")
 plt.plot(n_args, avg_jaccard_scores_MI, 'x-', label = "vs MI")
 #plt.plot(n_args, avg_jaccard_scores_chi2, 'x-', label = "vs chi2")
-plt.plot(n_args, avg_jaccard_scores_limma, 'x-', label = "vs Limma")
-plt.plot(n_args, avg_jaccard_scores_DE, 'x-', label = "vs DE")
+#plt.plot(n_args, avg_jaccard_scores_limma, 'x-', label = "vs Limma")
+if use_DE:
+    plt.plot(n_args, avg_jaccard_scores_DE, 'x-', label = "vs DE")
 plt.plot(n_args, avg_jaccard_scores_L1, 'x-', label = "vs L1")
 #plt.plot(n_args, avg_jaccard_scores_Tree, 'x-', label = "vs Tree")
 plt.xscale('log')
@@ -126,13 +146,25 @@ n_args = [1, 5, 10, 50, 100, 500, 1000, 5000, 10000, 20000, 30000]
 
 hm = {}
 for n in n_args:
-    data = {'Var': list(order_var[:n]),
+    if use_DE:
+        data = {'Var': list(order_var[:n]),
             'PCA_PC1': list(order_PCA_PC1[:n]),
             'F': list(order_F[:n]),
             'MI': list(order_MI[:n]),
             # 'chi2': list(order_chi2[:n]),
-            'Limma': list(order_limma[:n]),
+            #'Limma': list(order_limma[:n]),
             'DE': list(order_DE[:n]),
+            'L1': list(order_L1[:n]),
+            'IG': list(order_IG[:n]),
+            # 'Tree': list(order_Tree[:n]),
+           }
+    else:
+        data = {'Var': list(order_var[:n]),
+            'PCA_PC1': list(order_PCA_PC1[:n]),
+            'F': list(order_F[:n]),
+            'MI': list(order_MI[:n]),
+            # 'chi2': list(order_chi2[:n]),
+            #'Limma': list(order_limma[:n]),
             'L1': list(order_L1[:n]),
             'IG': list(order_IG[:n]),
             # 'Tree': list(order_Tree[:n]),
@@ -140,9 +172,12 @@ for n in n_args:
     
     x = [(k1, k2, len(set(d1) & set(d2))) for k1,d1 in data.items() for k2,d2 in data.items()]
     df = pd.DataFrame(x).pivot(index=0, columns=1, values=2)
-    print(n, df)
-    df = df[['Var', 'PCA_PC1', 'Limma', 'DE', 'F', 'MI', 'L1', 'IG']]
-    df = df.reindex(['Var', 'PCA_PC1', 'Limma', 'DE', 'F', 'MI', 'L1', 'IG'])
+    if use_DE:
+        df = df[['Var', 'PCA_PC1', 'DE', 'F', 'MI', 'L1', 'IG']]  # Limma
+        df = df.reindex(['Var', 'PCA_PC1', 'DE', 'F', 'MI', 'L1', 'IG'])  # Limma
+    else:
+        df = df[['Var', 'PCA_PC1', 'F', 'MI', 'L1', 'IG']]  # Limma
+        df = df.reindex(['Var', 'PCA_PC1', 'F', 'MI', 'L1', 'IG'])  # Limma
     print(n, df)
     plt.figure(figsize=(20, 20))
     sns.heatmap(df)

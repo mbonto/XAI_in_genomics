@@ -24,6 +24,7 @@ data_path = get_data_path(name)
 
 # Summarize results
 exps = np.arange(1, n_repet+1)
+b_test_acc = []
 test_acc = []
 train_acc = []
 duration = []
@@ -39,8 +40,10 @@ for exp in exps:
             if line[0] == 'train':
                 assert float(line[1]) > 99
                 train_acc.append(float(line[1]))
-            if line[0] == 'balanced_test':
+            if line[0] == 'test':
                 test_acc.append(float(line[1]))
+            if line[0] == 'balanced_test':
+                b_test_acc.append(float(line[1]))
             if line[0] == 'duration':
                 duration.append(float(line[1]))
             if line[0] == '# non-zero coefficients':
@@ -48,7 +51,8 @@ for exp in exps:
 
 assert len(test_acc) == len(exps)
 print(f"Train accuracy with {model_name} on {name}: {np.round(np.mean(train_acc) , 2)} +- {np.round(np.std(train_acc) , 2)}")   
-print(f"Balanced test accuracy with {model_name} on {name}: {np.round(np.mean(test_acc) , 2)} +- {np.round(np.std(test_acc) , 2)}")   
+print(f"Test accuracy with {model_name} on {name}: {np.round(np.mean(test_acc) , 2)} +- {np.round(np.std(test_acc) , 2)}")   
+print(f"Balanced test accuracy with {model_name} on {name}: {np.round(np.mean(b_test_acc) , 2)} +- {np.round(np.std(b_test_acc) , 2)}")   
 print(f"Training duration: {np.round(np.mean(duration) , 2)} +- {np.round(np.std(duration) , 2)}") 
 if model_name == "LR_L1_penalty":
     print(f"# non-zero coefficients: {np.round(np.mean(n_non_zero) , 2)} +- {np.round(np.std(n_non_zero) , 2)}")   

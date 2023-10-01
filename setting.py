@@ -34,16 +34,24 @@ def get_hyperparameters(name, model_name):
     elif model_name == "DiffuseMLP":
         n_layer = 1
         n_hidden_feat = 20
+    elif model_name == "GCN":
+        n_layer = 1
+        n_hidden_feat = 2
     return n_layer, n_hidden_feat
         
 
 def set_optimizer(name, model):
     n_epoch = 25
-    criterion = nn.CrossEntropyLoss()
     lr = 0.1
     weight_decay = 1e-4
     lr_gamma = 0.1
-    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=weight_decay)
+    if model == "GCN":
+        n_epoch = 1
+        criterion = nn.CrossEntropyLoss() # weight=torch.tensor([0.5, 5]))
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    else:
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=weight_decay)
     scheduler = MultiStepLR(optimizer, milestones=[int(0.5 * n_epoch), int(0.9 * n_epoch)], gamma=lr_gamma)
     return criterion, optimizer, scheduler, n_epoch
 
@@ -125,7 +133,7 @@ def get_split_dataset_setting(name):
 
 
 def get_loader_setting(name):
-    batch_size = 32
+    batch_size = 2 ## 32
     return batch_size
 
 
@@ -143,9 +151,9 @@ def get_XAI_hyperparameters(name, n_class):
     elif name in ["ttg-all", "ttg-breast"]:
         base_class = 0
         studied_class = [1,]
-    # elif name in ["BRCA-pam"]:
-    #     base_class = 4
-    #     studied_class = [0, 1, 2, 3]
+    elif name in ["BRCA-pam"]:
+        base_class = 4
+        studied_class = [0, 1, 2, 3]
     elif name.split("_")[0] == "syn":
         base_class = None
         studied_class = [0,]

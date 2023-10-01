@@ -26,12 +26,14 @@ argParser.add_argument("-m", "--model", type=str, help="model name (LR, MLP, Dif
 argParser.add_argument("--exp", type=int, help="experiment number", default=1)
 argParser.add_argument("--selection", type=str, help="method used to select features (var, PCA_PC1, F, MI, L1, limma, DESeq2, IG)")
 argParser.add_argument("--n_feat_selected", type=int, help="number of features selected when selection method is used")
+argParser.add_argument("--graph_name", type=str, help="used only with a GCN model, name of the file containing the adjacency matrix of the graph")
 args = argParser.parse_args()
 name = args.name
 model_name = args.model
 exp = args.exp
 selection = args.selection
 n_feat_selected = args.n_feat_selected
+graph_name = args.graph_name
 print('Model    ', model_name)
 if selection is not None:
     print(f"A feature selection based on {n_feat_selected} is done. {n_feat_selected} features are kept")
@@ -57,7 +59,8 @@ print(f"In our dataset, we have {n_class} classes and {n_sample} examples. Each 
 # Model
 softmax = False
 n_layer, n_hidden_feat = get_hyperparameters(name, model_name)
-model = load_model(model_name, n_feat, n_class, softmax, device, save_path, n_layer, n_hidden_feat)
+model = load_model(model_name, n_feat, n_class, softmax, device, save_path, n_layer, n_hidden_feat, graph_name)
+print(model)
 save_name = os.path.join(model_name, f"exp_{exp}") if selection is None else os.path.join(model_name, f"exp_{exp}_selection_{selection}_{n_feat_selected}")
 
 

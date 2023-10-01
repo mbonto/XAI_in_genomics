@@ -44,10 +44,13 @@ def load_phenotype(data_path, database, cancer):
     else:
         file_path = os.path.join(data_path, database, 'phenotype', '{}_phenotype.tsv.gz'.format(cancer))
         df = pd.read_csv(file_path, compression="gzip", sep="\t", index_col=column_name)
-        # Keep samples from primary tumors only
         if database == "legacy" and cancer == "BRCA":
-            df = df.loc[df["sample_type"] == "Primary Tumor"]
-            df = df.loc[df["PAM50Call_RNAseq"] != "Normal"]
+            # Keep samples from primary tumors (tumor subtypes) and normal surrounding tissues (normal subtype)
+            df_t = df.loc[df["sample_type"] == "Primary Tumor"]
+            df_t = df_t.loc[df["PAM50Call_RNAseq"] != "Normal"]
+            df_n = df.loc[df["sample_type"] == "Solid Tissue Normal"]
+            df_n = df_n.loc[df["PAM50Call_RNAseq"] == "Normal"]
+            df = pd.concat([df_t, df_n])
     return df
 
 

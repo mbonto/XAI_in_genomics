@@ -7,7 +7,7 @@ import argparse
 from setting import *
 from utils import *
 from loader import *
-from feature_selection import *
+from feature_selection_sklearn import *
 
 
 # Arguments
@@ -60,7 +60,7 @@ data_path = get_data_path(name)
 X_train, X_test, y_train, y_test, n_class, n_feat, class_name, feat_name = load_dataset(data_path, name, normalize=False)
 print(f"Number of classes: {n_class}.")
 print(f"    Classes: {class_name}.")
-print(f"Number of examples: {X.shape[0]}.")
+print(f"Number of examples: {X_train.shape[0]}.")
 print(f"Number of genes: {n_feat}.")
 print(f"    Examples: {feat_name[:3]}.")
 assert n_feat == len(np.unique(feat_name)) 
@@ -85,10 +85,10 @@ print("Principal component analysis")
 scores_PCA_PC1, _, _ = select_features_with_PCA(X, n_PC=3)
 print("Shape -", scores_PCA_PC1.shape, "Min -", np.round(np.min(scores_PCA_PC1), 2), "Max -", np.round(np.max(scores_PCA_PC1), 2))
 print("F test")
-scores_F = select_features_with_F_test(X, y)
+scores_F = select_features_with_F_test(X, y_train)
 print("Shape -", scores_F.shape, "Min -", np.round(np.min(scores_F), 2), "Max -", np.round(np.max(scores_F), 2))
 print("Mutual information")
-scores_MI = select_features_with_mutual_information(X, y)
+scores_MI = select_features_with_mutual_information(X, y_train)
 print("Shape -", scores_MI.shape, "Min -", np.round(np.min(scores_MI), 2), "Max -", np.round(np.max(scores_MI), 2))
 
 
@@ -113,8 +113,8 @@ print("Shape -", scores_MI.shape, "Min -", np.round(np.min(scores_MI), 2), "Max 
 ############################# FEATURE SELECTION WITH NORMALIZED DATA #########################
 ##############################################################################################
 # Prepare the data format: default normalization
-use_mean, use_std, log2, reverse_log2, divide_by_sum, factor = get_data_normalization_parameters(name)
-X, X_test = normalize_train_test_sets(X_train, X_test, use_mean, use_std, log2, reverse_log2, divide_by_sum, factor)
+# use_mean, use_std, log2, reverse_log2, divide_by_sum, factor = get_data_normalization_parameters(name)
+# X, X_test = normalize_train_test_sets(X_train, X_test, use_mean, use_std, log2, reverse_log2, divide_by_sum, factor)
 
 
 # 2. Wrapper methods (IGNORED FOR NOW BC OF TIME CONSTRAINT)
@@ -131,7 +131,7 @@ X, X_test = normalize_train_test_sets(X_train, X_test, use_mean, use_std, log2, 
 # 3. Embedded methods
 # print("LR with L1 penalty")
 # C = get_hyperparameters(name, "LR_L1_penalty")
-# scores_L1, _ = select_features_with_L1(X, y, X_test, y_test, save_path, C)
+# scores_L1, _ = select_features_with_L1(X, y_train, X_test, y_test, save_path, C)
 # if scores_L1.shape[0] == 1:
 #     scores_L1 = scores_L1[0, :]
 # else:

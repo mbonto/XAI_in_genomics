@@ -81,7 +81,7 @@ with open(os.path.join(save_path, save_name, "accuracy.csv"), "w") as f:
     f.write(f"balanced_test, {np.round(test_balanced_score, 2)}\n")
     f.write(f"duration, {np.round(duration, 2)}\n")
     if model_name == "LR_L1_penalty":
-        f.write(f"# non-zero coefficients, {np.sum(clf.coef_ != 0)}\n")
+        f.write(f"# non-zero coefficients, {np.sum(np.mean(clf.coef_, axis=0) != 0)}\n")
 
 
 if model_name == "LR_L1_penalty":
@@ -96,7 +96,7 @@ if model_name == "LR_L1_penalty":
         scores_L1 = clf.coef_[0, :]
     else:
         scores_L1 = np.mean(clf.coef_, axis=0)
-        print("Shape -", scores_L1.shape, "Min coef -", np.round(np.min(scores_L1), 2), "Max coef -", np.round(np.max(scores_L1), 2), "Number of selected features -", np.sum(scores_L1 != 0))
+    print("Shape -", scores_L1.shape, "Min coef -", np.round(np.min(scores_L1), 2), "Max coef -", np.round(np.max(scores_L1), 2), "Number of selected features -", np.sum(scores_L1 != 0))
     ## Features sorted by decreasing absolute values
     order_L1 = np.argsort(-np.abs(scores_L1))
     create_new_folder(os.path.join(save_path, "order"))
