@@ -18,19 +18,21 @@ from models import *
 from training import *
 set_pyplot()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+# device = torch.device('cpu')
 
 # Arguments
 argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="dataset name")
-argParser.add_argument("-m", "--model", type=str, help="model name (LR, MLP, DiffuseLR, DiffuseMLP)")
-argParser.add_argument("--layer", type=int, help="number of layers (MLP)", default=1)
-argParser.add_argument("--feat", type=int, help="number of features per layer (MLP)", default=20)
+argParser.add_argument("-m", "--model", type=str, help="model name (LR, MLP, GNN)")
+argParser.add_argument("--layer", type=int, help="number of layers (MLP, GNN)", default=1)
+argParser.add_argument("--feat", type=int, help="number of features per layer (MLP, GNN)", default=20)
+argParser.add_argument("--graph_name", type=str, help="used only with a GCN model, name of the file containing the adjacency matrix of the graph")
 args = argParser.parse_args()
 name = args.name
 model_name = args.model
 n_layer = args.layer
 n_hidden_feat = args.feat
+graph_name = args.graph_name
 print('Model    ', model_name)
 
 
@@ -47,7 +49,7 @@ print(f"In our dataset, we have {n_class} classes and {n_sample} examples. Each 
 
 # Model
 softmax = False
-model = load_model(model_name, n_feat, n_class, softmax, device, save_path, n_layer, n_hidden_feat)
+model = load_model(model_name, n_feat, n_class, softmax, device, save_path, n_layer, n_hidden_feat, graph_name)
 
 
 # Optimization
@@ -103,8 +105,7 @@ for fold, (train_idx, val_idx) in enumerate(splits.split(X, y)):
     epochs_loss = []
     for epoch in range(n_epoch):
         epoch_loss, epoch_acc = train(model, criterion, optimizer, train_loader, device, transform)  # train for 1 epoch
-        print("\rLoss at epoch {}: {:.2f}.".format(epoch+1, epoch_loss), end='')
-        print("(Acc \t: {:.2f}).".format(epoch_acc*100),end='')
+        print("\rLoss at epoch {}: {:.2f}. (Acc: {:.2f})".format(epoch+1, epoch_loss, epoch_acc*100), end='')
         scheduler.step()
     ## Score
     y_pred, y_true = predict(model, train_loader, device, transform)
@@ -124,6 +125,7 @@ for fold, (train_idx, val_idx) in enumerate(splits.split(X, y)):
 avg_train_balanced_score = avg_train_balanced_score / n_split
 avg_val_balanced_score = avg_val_balanced_score / n_split
 
+print("")
 print('Final')
 print(f'The balanced training accuracy with our {model.name} is {np.round(avg_train_balanced_score, 2)}.')
 print(f'The balanced test accuracy with our {model.name} is {np.round(avg_val_balanced_score, 2)}.')

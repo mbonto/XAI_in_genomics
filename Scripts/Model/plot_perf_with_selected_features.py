@@ -31,10 +31,11 @@ data_path = get_data_path(name)
 
 
 # Load data
-n_args = [1, 5, 10, 50, 100, 500, 1000]  # , 5000, 10000]
+n_args = [1, 5, 10, 50, 100, 500, 1000, 5000, 10000]
+selections = ["var", "PCA_PC1", "F", "MI", "L1_exp_1", "DESeq2", "IG_LR_set_train_exp_1", "IG_MLP_set_train_exp_1", "IG_GCN_set_train_exp_1"]
 
 data = {}
-for selection in ["var", "PCA_PC1", "F", "MI", "L1", "limma", "DESeq2", "IG"]:
+for selection in selections:
     data[selection] = []
     for n in n_args:
         save_name = os.path.join(model_name, f"exp_{exp}_selection_{selection}_{n}")

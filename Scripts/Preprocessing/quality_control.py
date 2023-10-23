@@ -15,7 +15,7 @@ from loader import *
 
 # Arguments
 argParser = argparse.ArgumentParser()
-argParser.add_argument("-n", "--name", type=str, help="dataset name (ttg-all, ttg-breast, BRCA-pam)")
+argParser.add_argument("-n", "--name", type=str, help="dataset name (BRCA, pancan, ttg-all, ttg-breast, BRCA-pam)")
 args = argParser.parse_args()
 name = args.name
 print("Dataset", name)
@@ -26,12 +26,6 @@ save_path = get_save_path(name, code_path)
 data_path = get_data_path(name)
 
 
-# Unit of the gene expression levels
-use_mean, use_sd, log2, reverse_log2, divide_by_sum, factor = get_data_normalization_parameters(name)
-use_mean = False
-use_std = False
-log2 = False
-
 # Setting
 database, cancer, label_name = get_TCGA_setting(name)
 
@@ -41,13 +35,16 @@ database, cancer, label_name = get_TCGA_setting(name)
 # Dataset
 weakly_expressed_genes_removed = False
 ood_samples_removed = False
-sample_IDs = TCGA_dataset(data_path, database, cancer, label_name, weakly_expressed_genes_removed, ood_samples_removed).sample_IDs
-X, y, class_name, feat_name = load_data(data_path, name, weakly_expressed_genes_removed, ood_samples_removed)
+normalize_expression = False
+sample_IDs = TCGA_dataset(data_path, database, cancer, label_name, weakly_expressed_genes_removed, ood_samples_removed, normalize_expression).sample_IDs
+X, y, class_name, feat_name = load_data(data_path, name, weakly_expressed_genes_removed, ood_samples_removed, normalize_expression)
 
 # Transform data to the count space (instead of the log count space)
-if reverse_log2:  # ttg-all, ttg-breast, BRCA-pam, BRCA, KIRC
+if database in ['gdc', 'ttg', 'legacy']:  # ttg-all, ttg-breast, BRCA-pam, BRCA, KIRC
     X = 2**X - 1
-print(f"Minimal gene expression value in the whole dataset (should be around 0): {np.round(np.min(X), 2)}.") 
+print(f"Minimal gene expression value in the whole dataset (should be around 0): {np.round(np.min(X), 2)}.")
+
+
 # Identify samples with more than t % of genes whose expression is 0
 t = 3 / 4
 n_zero_per_sample = np.sum(X <= 0, axis=1)  # for each sample, number of genes whose expression level is <= 0
@@ -58,6 +55,7 @@ if len(samples_to_remove) != 0:
     print("Number of samples per class")
     for c in range(len(class_list)):
         print(f"    {class_name[c]}: {n_gene[c]}")
+
 
 # Save the list of samples to remove
 samples_to_remove = list(np.array(sample_IDs)[samples_to_remove])
@@ -71,14 +69,17 @@ del X
 ## The genes that are constant are written in constant_genes_{name}.npy.
 
 # Dataset
+## normalize: remove mean and divide by std each gene
+## normalize_expression: make the sum of the gene expression of each sample equal to 10^6 and return log2(norm_count + 1)
 X_train, X_test, y_train, y_test, n_class, n_feat, _, _ = load_dataset(data_path, name, 
                                                                        normalize=False, 
                                                                        weakly_expressed_genes_removed=False, 
-                                                                       ood_samples_removed=True)
+                                                                       ood_samples_removed=True, normalize_expression=True)
 
 # Normalize data
-X_train, _ = normalize_train_test_sets(X_train, X_test, use_mean, use_std, log2, reverse_log2, divide_by_sum, factor)
+X_train = 2**X_train - 1
 print(f"Minimal gene expression value in the training set (should be around 0): {np.min(X_train)}.") 
+
 
 # Identify the genes that are weakly expressed in all classes
 t_gene = 5

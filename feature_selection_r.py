@@ -55,7 +55,7 @@ robjects.r('''deseq2 <- function(rawcount_dataframe, g1, g2) {
     # Parameters
     #     rawcount_dataframe -- R dataframe containing raw counts. Shape (n_gene, n_sample).
     #     g1 -- vector containing the names of the samples belonging to the "Control" group.
-    #     g2 -- vector containing the names of the samples belongnig to the "Condition" group.
+    #     g2 -- vector containing the names of the samples belonging to the "Condition" group.
     
     # Load packages
     suppressMessages(require(DESeq2))
@@ -73,13 +73,14 @@ robjects.r('''deseq2 <- function(rawcount_dataframe, g1, g2) {
     dds <- DESeqDataSetFromMatrix(countData = round(rawcount_dataframe), colData = colData, design=~(group))  # rawcount_dataframe must contain integer values
     dds <- DESeq(dds)  
     res <- results(dds)  # log2 fold change (MLE): condition a vs b: log2(a/b).
-    res[which(is.na(res$padj)),] <- 1  # padj: adjusted p value.i NA values replaced by 1.
+    res[which(is.na(res$padj)),] <- 1  # padj: adjusted p value. NA values replaced by 1.
     res <- as.data.frame(res)
     results <- list("DESeq_dataframe"= res, "rownames"=rownames(res), "colnames"=colnames(res))
 
     return(results)
 }
 ''')
+
 
 
 
@@ -140,7 +141,7 @@ def run_volcano(signature, signature_label, pvalue_threshold, logfc_threshold, p
             logfc_colname = "logFC"
         elif "baseMean" in rowData.index: #DESeq2
             expr_colname = "baseMean"
-            pval_colname = "pvalue"
+            pval_colname = "padj"  # "pvalue"
             logfc_colname = "log2FoldChange"
         # Text
         text.append('<b>'+index+'</b><br>Avg Expression = '+str(round(rowData[expr_colname], ndigits=2))+'<br>logFC = '+str(round(rowData[logfc_colname], ndigits=2))+'<br>p = '+'{:.2e}'.format(rowData[pval_colname])+'<br>FDR = '+'{:.2e}'.format(rowData[pval_colname]))

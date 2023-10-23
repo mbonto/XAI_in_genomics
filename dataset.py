@@ -202,7 +202,7 @@ def get_column_name(data_path, database, cancer, data_type):
 # Loader
 class TCGA_dataset(torch.utils.data.Dataset):
     "Create a dataset containing data from TCGA."
-    def __init__(self, data_path, database, cancer, label_name, weakly_expressed_genes_removed=True, ood_samples_removed=True):
+    def __init__(self, data_path, database, cancer, label_name, weakly_expressed_genes_removed=True, ood_samples_removed=True, normalize_expression=True):
         self.data_path = data_path
         self.database = database
         self.cancer = cancer
@@ -242,6 +242,13 @@ class TCGA_dataset(torch.utils.data.Dataset):
 
         # Extract the IDs of the genes
         self.genes_IDs = self.expression.columns.values.tolist()
+
+        # Normalise the gene expression of each sample
+        if normalize_expression:
+            if database in ['gdc', 'ttg', 'legacy']:  # reverse log2 if needed
+                self.expression = 2**self.expression - 1
+            self.expression = self.expression.div(self.expression.sum(axis=1), axis=0)  # gene expression divided by the total expression in the sample
+            self.expression = np.log2(self.expression * 10**6 + 1)
 
 
     def __len__(self):

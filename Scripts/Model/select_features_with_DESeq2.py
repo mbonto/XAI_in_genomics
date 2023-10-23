@@ -68,28 +68,35 @@ expression = pd.DataFrame(data=X.T, index=feat_name, columns=['sample_'+str(i) f
 # print("Min >= 0, Max", expression.max().max(), expression.min().max())
 ## Phenotype dataset. Rows = samples. Columns = category.
 # phenotype = data.labels
-assert n_class == 2
-y = np.where(y == 0, class_name[0], class_name[1])
+## assert n_class == 2
+## y = np.where(y == 0, class_name[0], class_name[1])
+y = y.astype(str)
+for c in range(n_class):
+    y[y == str(c)] = class_name[c]
 phenotype = pd.DataFrame(data=y.reshape(-1, 1), index=['sample_'+str(i) for i in range(X.shape[0])], columns=['_sample_type'])
 phenotype = phenotype['_sample_type']
 # print(phenotype.head())
 
 
 # Method
-assert n_class == 2
-base_class, studied_class = get_XAI_hyperparameters(name, n_class)
 classes = []
-classes.append(class_name[studied_class[0]])
-classes.append(class_name[base_class])
-print("Condition vs Control", classes)
+if n_class == 2:
+    base_class, studied_class = get_XAI_hyperparameters(name, n_class)
+    classes.append(class_name[studied_class[0]])
+    classes.append(class_name[base_class])
+    print("Condition vs Control", classes)
+else:
+    for c in range(n_class):
+        classes.append(class_name[c])
 signatures = get_signatures(classes, expression, phenotype, method)
 
 
 # Plot
+create_new_folder(os.path.join(save_path, "figures"))
 for label, signature in signatures.items():
     print("Table containing the gene expression signature generated from a differential gene expression analysis {} (Condition vs Control).".format(label))
     print(signature.head())
-    
+
 pvalue_threshold = 0.05
 logfc_threshold = 1.5
 plot_type = 'static'
@@ -101,13 +108,37 @@ for label, signature in signatures.items():
     plot_volcano(results[label], os.path.join(save_path, "figures"))
 
     
-# Save
+# Save results
+np.save(os.path.join(save_path, "figures", "DESeq2_results.npy"), results)
+# results = np.load(os.path.join(save_path, "figures", "DESeq2_results.npy"), allow_pickle=True).item()
+
+
+# Save the features (here, the genes) ranked by decreased log2FoldChange
 create_new_folder(os.path.join(save_path, "order"))
-for label, signature in signatures.items():
-    scores = results[label]['x']
-    feat_name = scores.index
-    order = np.argsort(-scores)
-    order = feat_name[order]
-    np.save(os.path.join(save_path, "order", f"order_{method}.npy"), order)
+check_feat_name = None
+highest_scores = None
+
+for label in results.keys():
+    scores = results[label]['x'].values
+    feat_name = np.array(results[label]['x'].index)
+    if check_feat_name is None:
+        check_feat_name = feat_name.copy()
+        highest_scores = scores.copy()
+    else:
+        # Align the features to compare the values associated with each gene
+        align_feat = []
+        for f in range(n_feat):
+            assert np.argwhere(feat_name == check_feat_name[f]).shape == (1, 1)
+            align_feat.append(np.argwhere(feat_name == check_feat_name[f])[0, 0])
+        align_feat = np.array(align_feat)
+        feat_name = feat_name[align_feat]
+        scores = scores[align_feat]
+        assert (check_feat_name == feat_name).all()
+        # Keep the maximal absolute log2FoldChange value per gene
+        highest_scores = np.maximum(np.abs(scores), np.abs(highest_scores))
+order = np.argsort(-np.abs(highest_scores))
+order = feat_name[order]
+np.save(os.path.join(save_path, "order", f"order_{method}.npy"), order)
+
 
 

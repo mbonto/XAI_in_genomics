@@ -4,6 +4,7 @@ import sys
 code_path = os.path.split(os.path.split(os.getcwd())[0])[0]
 sys.path.append(code_path)
 import numpy as np
+import random
 import torch
 import argparse
 from setting import *
@@ -14,7 +15,7 @@ from models import *
 from XAI_method import *
 set_pyplot()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+# device = torch.device('cpu')
 
 # Arguments
 argParser = argparse.ArgumentParser()
@@ -39,6 +40,14 @@ data_path = get_data_path(name)
 save_name = os.path.join(model_name, f"exp_{exp}")
 
 
+# Seed
+random.seed(exp)
+np.random.seed(exp)
+torch.manual_seed(exp)
+if device == 'cuda':
+    torch.cuda.manual_seed_all(exp)
+
+
 # Dataset
 train_loader, test_loader, n_class, n_feat, class_name, feat_name, transform, n_sample = load_dataloader(data_path, name, device)
 
@@ -52,8 +61,8 @@ elif set_name == 'test':
     
 # Model
 softmax = True
-n_layer, n_hidden_feat = get_hyperparameters(name, model_name)
-model = load_model(model_name, n_feat, n_class, softmax, device, save_path, n_layer, n_hidden_feat)
+n_layer, n_hidden_feat, graph_name = get_hyperparameters(name, model_name)
+model = load_model(model_name, n_feat, n_class, softmax, device, save_path, n_layer, n_hidden_feat, graph_name)
 checkpoint = torch.load(os.path.join(save_path, save_name, 'checkpoint.pt'))
 model.load_state_dict(checkpoint['state_dict'])
 model.eval()

@@ -1,4 +1,5 @@
 import numpy as np
+import json
 import torch
 import torch.nn as nn
 from torch.utils.data.sampler import SubsetRandomSampler
@@ -165,7 +166,8 @@ class normalize(nn.Module):
 
 
 ### Datasets
-def load_data(data_path, name, weakly_expressed_genes_removed=True, ood_samples_removed=True):
+# load_data returns two matrices X, y
+def load_data(data_path, name, weakly_expressed_genes_removed=True, ood_samples_removed=True, normalize_expression=True):
     """
     Load all examples of the dataset called `name` stored in `data_path` in a data matrix `X` and a label matrix `y`.
     Labels are numbers between 0 and the number of classes. The name of the classes are returned in the `class_name` list.
@@ -174,14 +176,14 @@ def load_data(data_path, name, weakly_expressed_genes_removed=True, ood_samples_
     assert name in ["pancan", "BRCA", "KIRC", "SIMU1", "SIMU2", "SimuA", "SimuB", "SimuC", "demo", "demo1", "ttg-all", "ttg-breast", "BRCA-pam"] or name[:3] == "syn" or name[:3] == "set", "Modify the function load_data to load your own dataset."
     if name in ["pancan", "BRCA", "KIRC", "ttg-all", "ttg-breast", "BRCA-pam"]:
         database, name, label_name = get_TCGA_setting(name)
-        data = TCGA_dataset(data_path, database, name, label_name, weakly_expressed_genes_removed, ood_samples_removed)
+        data = TCGA_dataset(data_path, database, name, label_name, weakly_expressed_genes_removed, ood_samples_removed, normalize_expression)
         X = np.zeros((len(data), get_number_features(data)))
         y = np.zeros((len(data))).astype('int64')
         for i, (sample, label) in enumerate(data):
             X[i] += sample.numpy()
             y[i] += label.numpy()
         class_name = list(data.label_map.keys())
-        feat_name = data.genes_IDs
+        feat_name = np.array(data.genes_IDs)
     elif name in ['SIMU1', 'SIMU2', 'SimuA', 'SimuB', 'SimuC', 'demo', 'demo1'] or name[:3] == "syn" or name[:3] == "set":
         data = np.load(os.path.join(data_path, f'{name}.npy'), allow_pickle=True).item()
         X = data['X']
@@ -208,7 +210,8 @@ def split_data_from_indices(X, y, train_indices, test_indices):
     return X[train_indices], X[test_indices], y[train_indices], y[test_indices]
 
 
-def load_dataset(data_path, name, normalize, regroup=True, classes=None, weakly_expressed_genes_removed=True, ood_samples_removed=True):
+# load_dataset returns X_train, X_test...
+def load_dataset(data_path, name, normalize, regroup=True, classes=None, weakly_expressed_genes_removed=True, ood_samples_removed=True, studied_features=None, normalize_expression=True):
     """
     Load data and split them into a training set and a test set.
     
@@ -217,9 +220,17 @@ def load_dataset(data_path, name, normalize, regroup=True, classes=None, weakly_
         regroup  --  True or False, used only if the dataset contains subclasses (e.g. 'SimuB', 'SimuC'). If True, subclasses are regrouped into one class. 
                      Otherwise, they appear as different classes.
         classes  --  None or list of integers. If None, all classes are considered. Otherwise, only the elements belonging to the listed classes are kept.
+        studied_features  --  List of features or None. If not None, only the listed features are loaded.
     """  
     # Load data
-    X, y, class_name, feat_name = load_data(data_path, name, weakly_expressed_genes_removed, ood_samples_removed)
+    X, y, class_name, feat_name = load_data(data_path, name, weakly_expressed_genes_removed, ood_samples_removed, normalize_expression)
+
+    # Special case: select particular features
+    if studied_features is not None:
+        indices = [np.argwhere(feat == feat_name)[0, 0] for feat in studied_features]
+        X = X[:, indices]
+        feat_name = feat_name[indices]
+        assert (feat_name == studied_features).all()
 
     # Create train/test sets
     test_size, random_state = get_split_dataset_setting(name)
@@ -271,10 +282,10 @@ def load_dataloader(data_path, name, device, regroup=True, studied_features=None
     use_mean, use_std, log2, reverse_log2, divide_by_sum, factor = get_data_normalization_parameters(name)
     batch_size = get_loader_setting(name)
     
-    if name in ["pancan", "ttg-all", "ttg-breast", "BRCA", "KIRC"]:
+    if name in ["pancan", "ttg-all", "ttg-breast", "BRCA", "KIRC", "BRCA-pam"]:
         # Load data
         database, name, label_name = get_TCGA_setting(name)
-        data = TCGA_dataset(data_path, database, name, label_name, weakly_expressed_genes_removed, ood_samples_removed)
+        data = TCGA_dataset(data_path, database, name, label_name, weakly_expressed_genes_removed, ood_samples_removed, normalize_expression=True)
         assert len(np.unique(data.genes_IDs)) == len(data.genes_IDs)
 
         # Selection of features
@@ -302,14 +313,7 @@ def load_dataloader(data_path, name, device, regroup=True, studied_features=None
         
     else:
         # Load data
-        X_train, X_test, y_train, y_test, n_class, n_feat, class_name, feat_name = load_dataset(data_path, name, normalize=False, regroup=regroup)
-
-        # Selection of features
-        if studied_features is not None:
-            X_train = X_train[:, studied_features]
-            X_test = X_test[:, studied_features]
-            n_feat = X_train.shape[1]
-            feat_name = feat_name[studied_features]
+        X_train, X_test, y_train, y_test, n_class, n_feat, class_name, feat_name = load_dataset(data_path, name, normalize=False, regroup=regroup, weakly_expressed_genes_removed=weakly_expressed_genes_removed, ood_samples_removed=ood_samples_removed, studied_features=studied_features, normalize_expression=True)
         
         # Information
         n_sample = len(X_train) + len(X_test)
@@ -359,3 +363,41 @@ def create_balanced_subset_from_data(data, indices, n):
         if classes[y] <= n:
             subset_indices.append(i)
     return subset_indices
+
+
+def get_selected_features(selection, selection_type, n_feat_selected, save_path):
+    """
+    Return an array containing the names of the selected features.
+
+    Parameters:
+        selection --  str, name of the selection method used to ranked the features. E.g. var, PCA_PC1, F, MI, L1_exp_1, DESeq2, IG_MLP_set_train_exp_1. 
+        selection_type  --  str, best, worst or random_wo_best (random features are selected among all features except the `n_feat_selected` best). 
+        n_feat_selected  -- int, number of selected features. If no selection is given, random genes are selected. 
+        save_path  --  str, path towards a folder called order containing an array of genes ranked by decreasing order of importance.
+    """
+    # Check variables
+    if selection is not None:
+        assert selection_type is not None, "`selection` cannot be used without `selection_type`"
+        print(f"Training on the {selection_type} feature for {selection}.") if n_feat_selected == 1 else print(f"Training on {n_feat_selected} {selection_type} features for {selection}.")
+    elif n_feat_selected is not None:
+        assert selection_type is None, "`selection_type` cannot be used without `selection`"
+        print(f"Training on {n_feat_selected} random feature(s).")
+
+    # Select features
+    if selection is not None:
+        studied_features = np.load(os.path.join(save_path, "order", f"order_{selection}.npy"), allow_pickle=True)
+        if selection_type == "best":
+            studied_features = studied_features[:n_feat_selected]
+        elif selection_type == "worst":
+            studied_features = np.flip(studied_features)[:n_feat_selected]
+        elif selection_type == "random_wo_best":
+            studied_features = studied_features[n_feat_selected:]
+            np.random.shuffle(studied_features)
+            studied_features = studied_features[:n_feat_selected]
+    elif n_feat_selected is not None:
+        studied_features = np.array(json.load(open(os.path.join(save_path, "genesIds.txt"))))
+        np.random.shuffle(studied_features)
+        studied_features = studied_features[:n_feat_selected]
+    else:
+        studied_features = None
+    return studied_features

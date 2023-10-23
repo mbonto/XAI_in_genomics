@@ -13,45 +13,47 @@ from torch.optim.lr_scheduler import MultiStepLR
 
 
 def get_hyperparameters(name, model_name):
-    n_layer = None
-    n_hidden_feat = None
     if model_name == "LR_L1_penalty":
         if name in ["ttg-breast", "BRCA-pam", "BRCA", "KIRC"]:
             C = 0.1
         elif name in ["ttg-all", "pancan"]:
             C = 1.
         return C
-    elif model_name == "MLP":
-        if name in ["pancan", "KIRC", "BRCA", "SIMU1", "SIMU2", "SimuA", "SimuB", "SimuC", "demo", "demo1", "ttg-all", "BRCA-pam"]:
+    else:
+        n_layer = None
+        n_hidden_feat = None
+        graph_name = None
+        if model_name == "MLP":
+            if name in ["pancan", "KIRC", "BRCA", "SIMU1", "SIMU2", "SimuA", "SimuB", "SimuC", "demo", "demo1", "ttg-all", "BRCA-pam"]:
+                n_layer = 1
+                n_hidden_feat = 20
+            elif name in ["ttg-breast"]:
+                n_layer = 1
+                n_hidden_feat = 10
+        elif model_name == "DiffuseMLP":
             n_layer = 1
             n_hidden_feat = 20
-        elif name in ["ttg-breast"]:
-            n_layer = 1
-            n_hidden_feat = 10
-        else:
-            n_layer = 1
-            n_hidden_feat = 20
-    elif model_name == "DiffuseMLP":
-        n_layer = 1
-        n_hidden_feat = 20
-    elif model_name == "GCN":
-        n_layer = 1
-        n_hidden_feat = 2
-    return n_layer, n_hidden_feat
-        
+        elif model_name == "GCN":
+            n_layers = {"BRCA": 5, "BRCA-pam": 5, "ttg-breast": 3, "ttg-all": 1, "pancan": 7}
+            ks = {"BRCA": 2, "BRCA-pam": 10, "ttg-breast": 2, "ttg-all": 10, "pancan": 10}
+            n_layer = n_layers[name]
+            n_hidden_feat = 1
+            k = ks[name]
+            graph_name = f"pearson_correlation_{k}_variables.npz"
+        return n_layer, n_hidden_feat, graph_name
+            
 
 def set_optimizer(name, model):
     n_epoch = 25
-    lr = 0.1
     weight_decay = 1e-4
     lr_gamma = 0.1
-    if model == "GCN":
-        n_epoch = 1
+    if model.name == "GCN":
+        n_epoch = 15
         criterion = nn.CrossEntropyLoss() # weight=torch.tensor([0.5, 5]))
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+        optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=weight_decay)
     else:
         criterion = nn.CrossEntropyLoss()
-        optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=weight_decay)
+        optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=weight_decay)
     scheduler = MultiStepLR(optimizer, milestones=[int(0.5 * n_epoch), int(0.9 * n_epoch)], gamma=lr_gamma)
     return criterion, optimizer, scheduler, n_epoch
 
@@ -113,16 +115,19 @@ def get_data_normalization_parameters(name):
     factor = 10**6  # only used when divide_by_sum is True. The expression of each gene is divided by the total expression in the sample and multiplied by `factor`.
     
     if name == 'pancan':
-        divide_by_sum = True
-        log2 = True
+        # divide_by_sum = True
+        # log2 = True
+        pass
     elif name in ['ttg-all', 'ttg-breast', 'BRCA-pam']:
-        reverse_log2 = True
-        divide_by_sum = True
-        log2 = True
+        # reverse_log2 = True
+        # divide_by_sum = True
+        # log2 = True
+        pass
     elif name in ['BRCA', 'KIRC']:
-        reverse_log2 = True
-        divide_by_sum = True
-        log2 = True
+        # reverse_log2 = True
+        # divide_by_sum = True
+        # log2 = True
+        pass
     return use_mean, use_std, log2, reverse_log2, divide_by_sum, factor
 
 
@@ -133,7 +138,7 @@ def get_split_dataset_setting(name):
 
 
 def get_loader_setting(name):
-    batch_size = 2 ## 32
+    batch_size = 32
     return batch_size
 
 

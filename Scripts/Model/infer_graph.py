@@ -58,7 +58,8 @@ if min_value is not None:
             A[i, :] = (A[i, :] >= min_value) * A[i, :] 
 print('Correlation done')
 save_npz(os.path.join(save_path, 'graph', f'{method}_{k}_variables'), csc_matrix(A))
-np.save(os.path.join(save_path, 'graph', f'{method}_{k}_variables_min_value.npy'), min_value)
+with open(os.path.join(save_path, 'graph', f'{method}_{k}_variables_min_value.txt'), "w") as f:
+    f.write(f"Minimal edge weight: {min_value}")
 
 ## Diffusion version
 #print("Computing the diffusing matrix between variables...")
@@ -76,6 +77,7 @@ np.save(os.path.join(save_path, 'graph', f'{method}_{k}_variables_min_value.npy'
 del A
 
 
+"""
 # Infer the adjacency matrix between samples
 print("Computing the adjacency matrix between samples...")
 A = get_a_graph(X_train.T, method)
@@ -93,6 +95,7 @@ if min_value is not None:
             print(i, end='\r')
             A[i, :] = (A[i, :] > min_value) * A[i, :] 
 save_npz(os.path.join(save_path, 'graph', f'{method}_{k}_samples'), csc_matrix(A))
-np.save(os.path.join(save_path, 'graph', f'{method}_{k}_samples_min_value.npy'), min_value)
+with open(os.path.join(save_path, 'graph', f'{method}_{k}_samples_min_value.txt'), "w") as f:
+    f.write(f"Minimal edge weight: {min_value}")
 print('Correlation done')
-
+"""

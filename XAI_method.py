@@ -187,3 +187,12 @@ def save_attributions(features_score, features_name, model, XAI_method, predicti
             'baseline': baseline,
             'baseline_pred': baseline_pred
             }, os.path.join(save_path, "{}_{}.pt".format(XAI_method, set_name)))
+
+
+def get_baseline_sklearn(X_train, y_train, n_feat, base_class=None):
+    if base_class is not None:
+        baseline = np.mean(X_train[y_train == base_class], axis=0).reshape(1, -1)
+    else:
+        baseline = np.zeros((1, n_feat))
+    return baseline
+

@@ -4,23 +4,22 @@ import torch.nn.functional as F
 import numpy as np
 from scipy.sparse import load_npz
 import os
+import json
 from torch_geometric.nn import SGConv, GCNConv, global_mean_pool, Sequential, graclus, max_pool_x
+from torch_geometric.nn.pool.pool import pool_batch, pool_edge
 from torch_geometric.nn.pool.consecutive import consecutive_cluster
 from torch_geometric.nn.pool.max_pool import _max_pool_x
-# from torch_geometric.utils import scatter
 from torch_geometric.utils.convert import from_scipy_sparse_matrix 
                         
 
     
-def load_model(model_name, n_feat, n_class, softmax, device, save_path, n_layer=None, n_hidden_feat=None, graph_name=None):
+def load_model(model_name, n_feat, n_class, softmax, device, save_path, n_layer=None, n_hidden_feat=None, graph_name=None, graph_features=None):
     # Hyperparameters
     if model_name in ['LR', 'DiffuseLR']:
         dropout = 0.2
     elif model_name in ['MLP', 'DiffuseMLP']:
         batch_norm = True
         dropout = 0
-    elif model_name in ['GCN']:
-        pass
 
     # Models
     if model_name == 'LR':
@@ -34,8 +33,8 @@ def load_model(model_name, n_feat, n_class, softmax, device, save_path, n_layer=
         edge_index, edge_weight = load_graph(os.path.join(save_path, 'graph'), 'pearson_correlation.npy', 0.5, device)
         model = DiffuseMLP(n_layer, n_feat, n_hidden_feat, n_class, edge_index, edge_weight, device, batch_norm, softmax, dropout)
     elif model_name == 'GCN':
-        edge_index, edge_weight = load_graph(os.path.join(save_path, 'graph'), graph_name, device)
-        model = GCN(n_layer, 1, n_hidden_feat, n_class, edge_index, edge_weight, softmax)
+        edge_index, edge_weight = load_graph(save_path, graph_name, device, graph_features)
+        model = GCN(n_layer, n_feat, 1, n_hidden_feat, n_class, edge_index, edge_weight, softmax)  # here, n_feat is the number of nodes. There is 1 feature per node.
 
     model.to(device)
     return model
@@ -62,81 +61,94 @@ class LogisticRegression(nn.Module):
     
     
 
-#def _max_pool_x(
-#    cluster: Tensor,
-#    x: Tensor,
-#    size: Optional[int] = None,
-#) -> Tensor:
-#    return scatter(x, cluster, dim=0, dim_size=size, reduce='max')
-
-
-
 class GCN(nn.Module):
 
-    def __init__(self, n_layer, n_node_feat, n_hidden_node_feat, n_class, edge_index, edge_weight, softmax):
+    def __init__(self, n_layer, n_node, n_node_feat, n_hidden_node_feat, n_class, edge_index, edge_weight, softmax):
         super(GCN, self).__init__()
         self.name = 'GCN'
-        self.variables = {"nb_classes": n_class, "nb_node_feat": n_node_feat, "nb_hidden_node_feat": n_hidden_node_feat, "nb_layers": n_layer}
+        self.variables = {"nb_classes": n_class, "nb_node": n_node, "nb_node_feat": n_node_feat, "nb_hidden_node_feat": n_hidden_node_feat, "nb_layers": n_layer}
+        self.n_layer = n_layer
         self.softmax = softmax
 
         # Graph
-        self.edge_index = edge_index
-        self.edge_weight = edge_weight
+        self.n_node = n_node
+        self.n_edge = edge_index.shape[1]
 
+        
+        # Coarsening layers
+        self.cluster = {}
+        self.perm = {}
+        # self.batch = {}
+        self.edge_index = {}
+        self.edge_weight = {}
+        self.n_cluster = {}
+
+        # Initial graph
+        self.edge_index[0] = edge_index
+        self.edge_weight[0] = edge_weight
+        # self.batch[0] = torch.zeros(self.n_node)
+
+        # Initial number of clusters = number of nodes in the graph
+        self.n_cluster[0] = self.n_node
+        
+        # Next pooling layers
+        for c in range(1, n_layer+1):
+            # Graclus reduces by roughly half the number of nodes.
+            # It associates a random unmarked node with its closest neighour (if no neighbour, no association). Then, both nodes are marked.
+            self.cluster[c], self.perm[c] = consecutive_cluster(graclus(self.edge_index[c-1], num_nodes=self.n_cluster[c-1]))
+            # cluster associates each index to a cluster.
+            # perm associates each cluster to a node of the cluster (used to determine the batch to which the new nodes belong).
+            # print("cluster (n_feat,)", self.cluster.shape)
+            # print("perm (n_cluster)", self.perm.shape)
+
+            # All nodes within the same cluster will be represented as one node whose features are the maximum features across these nodes.
+            # self.batch[c] = pool_batch(self.perm[c], self.batch[c-1])
+
+            # Edge indices are defined to be the union of the edge indices of all nodes within the same cluster.
+            self.edge_index[c], self.edge_weight[c] = pool_edge(self.cluster[c], self.edge_index[c-1], self.edge_weight[c-1])
+            # print("edge_index (2, n_edge)", edge_index.shape)
+            # print("edge_weight (n_edge,)", edge_weight.shape)
+
+            # Number of clusters after pooling 
+            self.n_cluster[c] = torch.unique(self.cluster[c]).shape[0]
+            print(f"Number of clusters at layer {c}", self.n_cluster[c])
+
+        
         # Hidden layers
         feat_list = [n_node_feat] + [n_hidden_node_feat] * n_layer 
-        layers = []       
-        for i in range(n_layer):
-            layers.append((GCNConv(feat_list[i], feat_list[i+1]),
-                           "x, edge_index, edge_weight -> x")
-                           )
-            layers.append(nn.ReLU())  
-        self.layers = Sequential("x, edge_index, edge_weight", layers)
+        layers = []
+        for c in range(n_layer):
+            layers.append((GCNConv(feat_list[c], feat_list[c+1]), "x, batch_edge_index, batch_edge_weight -> x"))
+            layers.append((get_batch_cluster(self.cluster[c+1], self.perm[c+1], self.edge_index[c+1], self.edge_weight[c+1], self.n_cluster[c+1], self.n_cluster[c]), "batch_size, batch -> batch_cluster, batch, batch_edge_index, batch_edge_weight"))
+            layers.append((_max_pool_x, "batch_cluster, x -> x"))
+            layers.append((nn.ReLU(), "x -> x"))
+        self.layers = Sequential("x, batch_edge_index, batch_edge_weight, batch_size, batch", layers)
         
+
         # Output
-        self.fc = nn.Linear(feat_list[-1], n_class)
+        self.fc = nn.Linear(self.n_cluster[n_layer] * feat_list[-1], n_class)
+
 
     def forward(self, x):
-        # Preparation of the batch for PyG
         batch_size = x.shape[0]
         n_node = x.shape[1]
-        batch_edge_index, batch_edge_weight, batch = get_batch_edge_index(self.edge_index, self.edge_weight, n_node, batch_size)
-        print("x (batch_size, n_feat)", x.shape)
+        # print("x (batch_size, n_feat)", x.shape)
+        
+        # Preparation of the batch for PyG
+        batch_edge_index, batch_edge_weight, batch = get_batch_edge_index(self.edge_index[0], self.edge_weight[0], n_node, batch_size)
         x = reshape_batch(x)
-        print("x (batch_size x n_feat, 1)", x.shape)
+        # print("batch_edge_index (2, n_edge x batch_size)", batch_edge_index.shape)
+        # print("batch_edge_weight (n_edge x batch_size,)", batch_edge_weight.shape)
+        # print("x (batch_size x n_feat, 1)", x.shape)
 
-        # 1. Node embedding
-        x = self.layers(x, batch_edge_index, batch_edge_weight)
-        print("x (batch_size x n_feat, n_hidden_dim)", x.shape)
-
-        # 2. Coarsening layer
-        ## All nodes within the same cluster will be represented as one node.
-        ## Final node features are defined by the maximum features of all nodes within the same cluster.
-        ## Edge indices are defined to be the union of the edge indices of all nodes within the same cluster.
-        # Algorithm associating a node with its best neighour (if no neighbour, no association)
-        # An unmarked node is chosen at random. After the association, the node and its neighbour are marked. 
-        # Reduce by roughly half the number of nodes
-        cluster = graclus(batch_edge_index, num_nodes=n_node)
-        print("cluster (batch_size x n_feat)", cluster.shape)
-        print("    first elements", cluster[:10])
-        print("    number of clusters", torch.unique(cluster).shape[0])
-        # cluster associates each index to a cluster
-        # perm associates each cluster to a node of the cluster (used to determine the batch to which the new nodes belong)
-        cluster, perm = consecutive_cluster(cluster)
-        print("cluster (batch_size x n_feat)", cluster.shape)
-        print("perm (n_cluster)", perm.shape)
-        # All nodes within the same cluster will be represented as one node.
-        # Final node features are defined by the maximum features of all nodes within the same cluster.
-        x = _max_pool_x(cluster, x)
-        print("x (n_cluster, n_hidden_dim)", x.shape)
-        # batch_edge_index, batch_edge_weight = pool_edge(cluster, batch_edge_index, batch_edge_weight)
-        # batch = pool_batch(perm, data.batch)
-        # x, batch = max_pool_x(cluster, x, batch)
+        # 1. Node embedding + coarsening
+        x = self.layers(x, batch_edge_index, batch_edge_weight, batch_size, batch)
         # x = global_mean_pool(x, batch)
-        if torch.all(x == 0):
-            print("All features degenerate to 0!")
-
+        
         # 3. Final classifier
+        x = reverse_reshape_batch(x, batch_size)
+        #if torch.all(x == 0):
+        #    print("All features degenerate to 0!")
         x = self.fc(x)
         
         if self.softmax:
@@ -145,8 +157,36 @@ class GCN(nn.Module):
         
 
 
+class get_batch_cluster(nn.Module):
+    def __init__(self, cluster, perm, edge_index, edge_weight, n_cluster, n_cluster_initial):
+        super(get_batch_cluster, self).__init__()
+        self.cluster = cluster
+        self.perm = perm
+        self.edge_index = edge_index
+        self.edge_weight = edge_weight
+        self.n_cluster = n_cluster
+        self.n_cluster_initial = n_cluster_initial
+        self.batch_size = None
+
+    def forward(self, batch_size, batch):
+        if batch_size != self.batch_size:
+            self.batch_cluster = self.cluster
+            self.batch_perm = self.perm
+            self.batch_edge_index = self.edge_index
+            self.batch_edge_weight = self.edge_weight
+            for b in range(1, batch_size):
+                self.batch_cluster = torch.cat((self.batch_cluster, self.cluster + self.n_cluster * b))
+                self.batch_perm = torch.cat((self.batch_perm, self.perm + self.n_cluster_initial * b))
+                self.batch_edge_index = torch.cat((self.batch_edge_index, self.edge_index + self.n_cluster * b), dim=1)
+                self.batch_edge_weight = torch.cat((self.batch_edge_weight, self.edge_weight))
+            self.batch = pool_batch(self.batch_perm, batch)
+            self.batch_size = batch_size
+        return self.batch_cluster, self.batch, self.batch_edge_index, self.batch_edge_weight
+
+
+
+
 class MLP(nn.Module):
-    
     def __init__(self, nb_layers, nb_feat, nb_hidden_feat, nb_classes, batch_norm=False, softmax=False, dropout=0):
         super(MLP, self).__init__()
         self.name = 'MLP'
@@ -313,11 +353,22 @@ def reshape_batch(x):
 def reverse_reshape_batch(x, batch_size):
     """Reshape x from (batch_size x n_node, n_feat_per_node) to (batch_size, n_node * n_feat_per_node).
     """
-    return torch.reshape(x, [batch_size, -1])
+    return torch.reshape(x, (batch_size, -1))
 
 
-def load_graph(save_path, name, device):
-    A = load_npz(os.path.join(save_path, name))
+def load_graph(save_path, name, device, graph_features):
+    # Adjacency matrix
+    A = load_npz(os.path.join(save_path, "graph", name))
+    # Special case: select particular features
+    if graph_features is not None:
+        feat_name = np.array(json.load(open(os.path.join(save_path, "genesIds.txt"))))
+        assert len(feat_name) == A.shape[0]
+        indices = [np.argwhere(feat == feat_name)[0, 0] for feat in graph_features]
+        A = A[:, indices]
+        A = A[indices, :]
+        feat_name = feat_name[indices]
+        assert (feat_name == graph_features).all()
+    # PyG format
     edge_index, edge_weight = edge_index_from_adjacency(A)
     edge_index = edge_index.to(device)
     edge_weight = edge_weight.to(dtype=torch.float32).to(device)

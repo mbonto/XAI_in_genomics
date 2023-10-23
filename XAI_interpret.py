@@ -372,34 +372,37 @@ def get_results_with_random_features(model, X, y, nb_to_keep, n_simu, baseline, 
 
 
 # Prediction gaps        
-def prediction_gap_with_dataloader(model, loader, transform, attr, gap, baseline, studied_class, indices=None,_type=None, y_true=None, y_pred=None):
+def prediction_gap_with_dataloader(model, loader, transform, gap, baseline, studied_class, indices, y_true=None, y_pred=None):
     """
-    Return the average of the prediction gaps (PGs) computed on the correctly classified examples belonging to `studied_class`. 
-    Each PG is computed by iteratively replacing the values of the features of an example by the values of the baseline.
+    Return the average of the prediction gaps (PGs) computed on the correctly classified examples belonging to `studied_class`.
+
+    To compute a PG for an example of a given class, one need to measure how the probability associated with the class varies when the features of the example are masked.
+
+    Formally, let us call the probability attributed by the `model` to the class of the example "model(example)". PG is the area under the curve showing maximum(0, model(example) - model(modified example)) as a function of the number of masked features. A feature is masked when its value is replaced by the `baseline` value.
+
+    In practice, the area is estimated with the rectangle rule: the first point is computed after masking `gap` features, the second one after masking 2`gap` features... The estimated area is the sum of the areas of the rectangles obtained (`gap` * y_value). 
+    The last point is necessary the one obtained when all features are masked. If needed, a last rectangle of shape (n_feat % `gap` * y_value) is added to the estimated area. 
+    The areas are divided by n_feat and by model(example).
+
+    The biggest PG is 1 (masking one or more features leads to the maximal perturbation). 
+    The smallest prediction gap is 0 (all features can be masked without perturbing the prediction). 
 
     Parameters:
         model  --  Neural network.
         loader  --  Dataloader.
         transform  --  Function applied to the input tensors to scale the data.
-        attr  --  Attributions. Tensor (n_sample, n_feat).
-        gap  --  The PG is computed iteratively after modifying the `gap` first unmodified features.
-        baseline  --  Values used to modify the values of the input features. Tensor (1, n_feat).
+        gap  --  Area computed with the rectangle rule using points computed iteratively by masking `gap` more features each time.
+        baseline  --  Values used to mask the features. Tensor (1, n_feat).
         studied_class  --  Compute the PGs for all examples belonging to a class listed in `studied_class`. List of integers.
-        indices  --  Order of the features to remove. Array (1, n_feat) or None.
-        _type  --  When `indices` is None, order of importance by which the features of each example are going to be modified. "important", "unimportant" or None.
-        y_true  --  Classes of the n_sample contained in `attr`. Used for a sanity check. Tensor (n_sample, 1) or None.  
-        y_pred  --  Classes of the n_sample contained in `attr` predicted by the model. Tensor (n_sample, 1) or None.
+        indices  --  Order of features to be masked. Array (n_sample, n_feat) or array (1, n_feat) when the same order is used for all examples.
+        y_true  --  Classes of the examples used to generate the indices. Used for a sanity check. Tensor (n_sample, 1) or None.  
+        y_pred  --  Classes predicted by `model` of the examples used to generate the indices. Used for a sanity check. Tensor (n_sample, 1) or None.
     """
     # Informations
-    if indices is None:
-        assert _type in ["important", "unimportant"], "Provide a ranking of features for all examples with `indices` or choose a ranking `_type` for each example."
-    if indices is not None:
-        assert _type is None, "Provide a ranking of features for all examples with `indices` or a ranking `_type` for each example. Not both."
     assert len(studied_class) > 0, "Provide a list of classes to consider for computing the PGs."
-    n_sample = len(attr)
-    x, _ =  next(iter(loader))
-    n_feat = x.shape[1]
+    n_feat = baseline.shape[1]
     device = model.fc.weight.device
+    n_point = int(n_feat / gap)
 
     # Store the gaps
     PG = {}
@@ -409,7 +412,7 @@ def prediction_gap_with_dataloader(model, loader, transform, attr, gap, baseline
         n_per_class[c] = 0
     
     # Compute the gaps
-    torch.manual_seed(1)  # Seed needed to load the examples in the same order as in `attr`.
+    torch.manual_seed(1)  # Seed needed to load the examples in the order used to generate `indices`.
     count = 0
     for i, (x, y) in enumerate(loader):
         print(i, end='\r')
@@ -432,16 +435,9 @@ def prediction_gap_with_dataloader(model, loader, transform, attr, gap, baseline
         if y_pred is not None:
             assert (_class == y_pred[count:count + batch_size]).all(), 'Problem with model.'
 
-        # If indices is not defined as an input variable, rank features by importance for each example
-        if _type == 'important':
-            indices = np.argsort(-attr[count:count + batch_size], axis=1)
-        elif _type == 'unimportant':
-            indices = np.argsort(attr[count:count + batch_size], axis=1)
-
-        # Prediction gap
-        n_point = int(n_feat / gap)
-        pred_gap = np.zeros((batch_size, n_point))
+        # Prediction gap estimated on n_point
         pred_full = model(x)[np.arange(batch_size), y].detach().cpu().numpy()
+        pred_gap = np.zeros((batch_size, n_point))
 
         for i in range(n_point):
             s = np.repeat(np.arange(batch_size), gap)
@@ -452,15 +448,26 @@ def prediction_gap_with_dataloader(model, loader, transform, attr, gap, baseline
             x[s, f] = baseline[np.repeat(np.zeros(batch_size), gap), f].clone().detach().to(device)
             pred = model(x)
             pred = pred[np.arange(batch_size), y].detach().cpu().numpy()
-            pred_gap[:, i] = pred_full - pred
-        mask = (pred_gap) > 0 * 1.0
-        pred_gap = np.sum(mask * pred_gap, axis=1) / n_feat * gap
+            with np.errstate(divide='ignore', invalid='ignore', over='ignore'):  # do not print warning related to division by 0
+                pred_gap[:, i] = (pred_full - pred) / pred_full
+        with np.errstate(divide='ignore', invalid='ignore', over='ignore'):
+            mask = (pred_gap) > 0 * 1.0
+            pred_gap = np.sum(mask * pred_gap, axis=1) * gap / n_feat
 
-        # Sum without taking into account misclassified examples
+        # Add a last point if not all features have been masked yet
+        if n_feat % gap != 0:
+            pred = model(baseline)[np.zeros(batch_size), y].detach().cpu().numpy()
+            with np.errstate(divide='ignore', invalid='ignore', over='ignore'):
+                pred_gap_last_point = (pred_full - pred) / pred_full
+                mask = (pred_gap_last_point) > 0 * 1.0
+                pred_gap_last_point = mask * pred_gap_last_point * (n_feat % gap) / n_feat
+            pred_gap += pred_gap_last_point
+
+        # Store the PGs computed on the correctly classified examples corresponding to the studied classes
         for s in range(batch_size):
             if _class[s] == y[s]:
                 if y[s] in studied_class:
-                    PG[y[s]] += np.sum(pred_gap[s])
+                    PG[y[s]] += pred_gap[s]
                     n_per_class[y[s]] += 1
 
         # Update count
@@ -473,44 +480,63 @@ def prediction_gap_with_dataloader(model, loader, transform, attr, gap, baseline
     return PG
 
 
-def prediction_gap_for_an_example(model, x, y, transform, attr, gap, baseline, indices):
+
+def prediction_gap_for_an_example(model, x, y, transform, gap, baseline, indices):
     """
-    Return the prediction gap (PG) computed on an example `x`. The PG is computed by 
-    iteratively replacing the values in `x` by the values in `baseline`.
+    Return the prediction gap (PG) computed on an example `x` of a given class `y`. 
+
+    Formally, let us call the probability attributed by the `model` to the class of the example "model(example)". PG is the area under the curve showing maximum(0, model(example) - model(modified example)) as a function of the number of masked features. A feature is masked when its value is replaced by the `baseline` value.
+    
+    In practice, the area is estimated with the rectangle rule: the first point is computed after masking `gap` features, the second one after masking 2`gap` features... The estimated area is the sum of the areas of the rectangles obtained (`gap` * y_value). 
+    The last point is necessary the one obtained when all features are masked. If needed, a last rectangle of shape (n_feat % `gap` * y_value) is added to the estimated area.
+    The area is divided by n_feat and by model(example).
+
+    The biggest PG is 1 (masking one or more features leads to the maximal perturbation). 
+    The smallest prediction gap is 0 (all features can be masked without perturbing the prediction). 
 
     Parameters:
-        model  --  Neural network.
-        x  --  Example. Tensor (1, n_feat).
+        model  --  Torch model or sklearn model.
+        x  --  Example (1, n_feat). Tensor (torch) or array (sklearn).
         y  --  Class of `x`. Integer.
-        transform  --  Function scaling to the input `x`.
-        attr  --  Attributions. Tensor (1, n_feat).
-        gap  --  The PG is computed iteratively after modifying the `gap` first unmodified features.
-        baseline  --  Values used to modify the values of the input features. Tensor (1, n_feat).
-        indices  --  Order of the features to remove. Array (1, n_feat).
+        transform  --  Function scaling the input `x`.
+        gap  --  Area computed with the rectangle rule using points computed iteratively by masking `gap` more features each time.
+        baseline  --  Values used to mask the features (1, n_feat). Tensor (torch) or array (sklearn). 
+        indices  --  Order of features to be masked. Array (1, n_feat).
     """
     # Informations
     n_feat = x.shape[1]
-    device = model.fc.weight.device
-    
-    # Transform x
-    x = x.to(device)
-    if transform:
-        x = transform(x)
-        
-    # Prediction gap
+    model_type = type(model).split('.')[0]
+    print("Model type", model_type)
+
+    if model_type != "sklearn":
+        device = model.fc.weight.device
+        # Transform x
+        x = x.to(device)
+        if transform:
+            x = transform(x)
+            
+    # Prediction gap estimated on n_point
     n_point = int(n_feat / gap)
+    pred_full = model.predict_proba(x)[0, y] if model_type == "sklearn" else model(x)[0, y].detach().cpu().numpy()
     pred_gap = np.zeros((n_point))
-    pred_full = model(x)[0, y].detach().cpu().numpy()
     for i in range(n_point):
         s = np.repeat(np.arange(1), gap)
         f = indices[0, i * gap:i * gap + gap]
-        x[s, f] = baseline[s, f].clone().detach()
-        pred = model(x)
-        pred = pred[0, y].detach().cpu().numpy()
-        pred_gap[i] = pred_full - pred
+        x[s, f] = baseline[s, f].copy() if model_type == "sklearn" else baseline[s, f].clone().detach().to(device)
+        pred = model.predict_proba(x)[0, y] if model_type == "sklearn" else model(x)[0, y].detach().cpu().numpy()
+        pred_gap[i] = (pred_full - pred) / pred_full
     mask = (pred_gap) > 0 * 1.0
-    curve = mask * pred_gap
-    PG = np.sum(curve) / n_feat * gap
+    curve = list(mask * pred_gap)
+    PG = np.sum(curve) * gap / n_feat
+
+    # Add a last point if not all features have been masked yet
+    if n_feat % gap != 0:
+        pred = model.predict_proba(baseline)[0, y] if model_type == "sklearn" else model(baseline)[0, y].detach().cpu().numpy()
+        pred_gap_last_point = (pred_full - pred) / pred_full
+        mask = (pred_gap_last_point) > 0 * 1.0
+        curve.append(mask * pred_gap_last_point)
+        PG += (mask * pred_gap_last_point) * (n_feat % gap) / n_feat
+
     return PG, curve
 
 
@@ -614,4 +640,89 @@ def get_informative_variables(studied_class, other_class, useful_group, useful_v
                         variables["C"+str(c)].append(g)
                         counts[c] += 1
     return counts, variables
+
+
+# Prediction gaps for a sklearn model      
+def prediction_gap_with_dataset(model, X, y, gap, baseline, studied_class, indices):
+    """
+    Return the average of the prediction gaps (PGs) computed on the correctly classified examples belonging to `studied_class`.
+
+    To compute a PG for an example of a given class, one need to measure how the probability associated with the class varies when the features of the example are masked.
+
+    Formally, let us call the probability attributed by the `model` to the class of the example "model(example)". PG is the area under the curve showing maximum(0, model(example) - model(modified example)) as a function of the number of masked features. A feature is masked when its value is replaced by the `baseline` value.
+
+    In practice, the area is estimated with the rectangle rule: the first point is computed after masking `gap` features, the second one after masking 2`gap` features... The estimated area is the sum of the areas of the rectangles obtained (`gap` * y_value). 
+    The last point is necessary the one obtained when all features are masked. If needed, a last rectangle of shape (n_feat % `gap` * y_value) is added to the estimated area. 
+    The areas are divided by n_feat and by model(example).
+
+    The biggest PG is 1 (masking one or more features leads to the maximal perturbation). 
+    The smallest prediction gap is 0 (all features can be masked without perturbing the prediction). 
+
+    Parameters:
+        model  --  Sklearn classifier.
+        X  --  Data. Array (n_sample, n_feat).
+        y  --  Labels. Array (n_sample,).
+        gap  --  Area computed with the rectangle rule using points computed iteratively by masking `gap` more features each time.
+        baseline  --  Values used to mask the features. Array (1, n_feat).
+        baseline  --  Values used to modify the values of the input features. Tensor (1, n_feat).
+        studied_class  --  Compute the PGs for all examples belonging to a class listed in `studied_class`. List of integers.
+        indices  --  Order of features to be masked. Array (1, n_feat).
+    """
+    # Informations
+    assert len(studied_class) > 0, "Provide a list of classes to consider for computing the PGs."
+    n_feat = X.shape[1]
+    n_point = int(n_feat / gap)
+
+    # Store the gaps
+    PG = {}
+    n_per_class = {}
+    for c in studied_class:
+        PG[c] = 0
+        n_per_class[c] = 0
+    
+    # Data
+    X = X[sum(y == c for c in studied_class).astype(bool)]
+    y = y[sum(y == c for c in studied_class).astype(bool)]
+    n_sample = X.shape[0]
+    _class = model.predict(X)
+
+    # Prediction gap estimated on n_point
+    # print(model.predict_proba(X).shape, n_sample, y.shape)
+    pred_full = model.predict_proba(X)[np.arange(n_sample), y]
+    pred_gap = np.zeros((n_sample, n_point))
+
+    for i in range(n_point):
+        s = np.repeat(np.arange(n_sample), gap)  # [0 0 0 1 1 1 2 ..]
+        f = np.tile(indices[0, i * gap:i * gap + gap], n_sample)  # [0 1 2 0 1 2 ..]
+        X[s, f] = baseline[np.repeat(np.zeros(n_sample, dtype=int), gap), f].copy()
+        pred = model.predict_proba(X)[np.arange(n_sample), y]
+        with np.errstate(divide='ignore', invalid='ignore', over='ignore'):  # do not print warning related to division by 0
+            pred_gap[:, i] = (pred_full - pred) / pred_full
+    with np.errstate(divide='ignore', invalid='ignore', over='ignore'):
+        mask = (pred_gap) > 0 * 1.0
+        pred_gap = np.sum(mask * pred_gap, axis=1) * gap / n_feat
+
+    # Add a last point if not all features have been masked
+    if n_feat % gap != 0:
+        pred = model.predict_proba(baseline)[np.zeros(n_sample, dtype=int), y]
+        with np.errstate(divide='ignore', invalid='ignore', over='ignore'):
+            pred_gap_last_point = (pred_full - pred) / pred_full
+            mask = (pred_gap_last_point) > 0 * 1.0
+            pred_gap_last_point = mask * pred_gap_last_point * (n_feat % gap) / n_feat
+        pred_gap += pred_gap_last_point
+
+    # Store the PGs computed on the correctly classified examples corresponding to the studied classes
+    for s in range(n_sample):
+        if _class[s] == y[s]:
+            if y[s] in studied_class:
+                PG[y[s]] += pred_gap[s]
+                n_per_class[y[s]] += 1
+
+    # Average PG per class
+    for c in studied_class:
+        PG[c] = PG[c] / n_per_class[c]
+
+    return PG
+
+
 

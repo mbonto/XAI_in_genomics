@@ -27,7 +27,6 @@ def train(model, criterion, optimizer, data_loader, device, transform=None, shuf
         optimizer.zero_grad()
         # Forward + backward + optimize.
         outputs = model(x)
-        # print(outputs)
         loss = criterion(outputs, y)
         loss.backward()  
         optimizer.step()
