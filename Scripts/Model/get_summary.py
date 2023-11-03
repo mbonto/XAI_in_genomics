@@ -50,9 +50,9 @@ for exp in exps:
                 n_non_zero.append(float(line[1]))
 
 assert len(test_acc) == len(exps)
-print(f"Train accuracy with {model_name} on {name}: {np.round(np.mean(train_acc) , 2)} +- {np.round(np.std(train_acc) , 2)}")   
-print(f"Test accuracy with {model_name} on {name}: {np.round(np.mean(test_acc) , 2)} +- {np.round(np.std(test_acc) , 2)}")   
-print(f"Balanced test accuracy with {model_name} on {name}: {np.round(np.mean(b_test_acc) , 2)} +- {np.round(np.std(b_test_acc) , 2)}")   
-print(f"Training duration: {np.round(np.mean(duration) , 2)} +- {np.round(np.std(duration) , 2)}") 
+print(f"Train accuracy with {model_name} on {name}: {np.round(np.mean(train_acc) , 1)} +- {np.round(np.std(train_acc) , 1)}")   
+print(f"Test accuracy with {model_name} on {name}: {np.round(np.mean(test_acc) , 1)} +- {np.round(np.std(test_acc) , 1)}")   
+print(f"Balanced test accuracy with {model_name} on {name}: {np.round(np.mean(b_test_acc) , 1)} +- {np.round(np.std(b_test_acc) , 1)}")   
+print(f"Training duration: {np.round(np.mean(duration) , 1)} +- {np.round(np.std(duration) , 1)}") 
 if model_name == "LR_L1_penalty":
-    print(f"# non-zero coefficients: {np.round(np.mean(n_non_zero) , 2)} +- {np.round(np.std(n_non_zero) , 2)}")   
+    print(f"# non-zero coefficients: {np.round(np.mean(n_non_zero) , 1)} +- {np.round(np.std(n_non_zero) , 1)}")   

@@ -118,11 +118,10 @@ print('Average PGR', np.round(np.mean(PGRs), 2))
 # Save
 create_new_folder(os.path.join(save_path, save_name, "figures"))
 with open(os.path.join(save_path, save_name, "figures", f"global_XAI_{set_name}.csv"), "w") as f:
-    for _type in global_PG.keys():
-        for order in ["increasing", "decreasing"]:
-            if order == "increasing":
-                f.write(f"{_type}, PGU, {global_PG[order]}\n")
-            else:
-                f.write(f"{_type}, PGI, {global_PG[order]}\n")
+    for order in ["increasing", "decreasing"]:
+        if order == "increasing":
+            f.write(f"PGU, {global_PG[order]}\n")
+        else:
+            f.write(f"PGI, {global_PG[order]}\n")
     f.write(f"PGR, {np.round(np.mean(PGRs), 2)}\n")
     f.write(f"list_PGR, {PGRs}\n")

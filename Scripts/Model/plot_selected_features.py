@@ -209,7 +209,7 @@ for n in n_args:
     sns.heatmap(df)
     plt.xlabel('')
     plt.ylabel('')
-    plt.savefig(os.path.join(save_path, "figures", f"heatmap_FS_{n}.png"), bbox_inches='tight')
+    # plt.savefig(os.path.join(save_path, "figures", f"heatmap_FS_{n}.png"), bbox_inches='tight')
 
 
 # Heatmap 100 vs 1000 features

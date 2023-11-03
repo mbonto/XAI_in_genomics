@@ -34,10 +34,11 @@ def get_hyperparameters(name, model_name):
             n_layer = 1
             n_hidden_feat = 20
         elif model_name == "GCN":
-            n_layers = {"BRCA": 5, "BRCA-pam": 5, "ttg-breast": 3, "ttg-all": 1, "pancan": 7}
-            ks = {"BRCA": 2, "BRCA-pam": 10, "ttg-breast": 2, "ttg-all": 10, "pancan": 10}
+            n_layers = {"BRCA": 3, "BRCA-pam": 1, "ttg-breast": 1, "ttg-all": 1, "pancan": 3}
+            n_hidden_feats = {"BRCA": 2, "BRCA-pam": 2, "ttg-breast": 1, "ttg-all": 1, "pancan": 2}
+            ks = {"BRCA": 2, "BRCA-pam": 10, "ttg-breast": 2, "ttg-all": 10, "pancan": 2}
             n_layer = n_layers[name]
-            n_hidden_feat = 1
+            n_hidden_feat = n_hidden_feats[name]
             k = ks[name]
             graph_name = f"pearson_correlation_{k}_variables.npz"
         return n_layer, n_hidden_feat, graph_name

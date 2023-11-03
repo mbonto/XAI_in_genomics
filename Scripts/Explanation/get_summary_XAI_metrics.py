@@ -32,7 +32,7 @@ data_path = get_data_path(name)
 # Summarize local PGs
 exps = np.arange(1, n_repet+1)
 PGU = []
-PGU_adjusted = []
+#PGU_adjusted = []
 PGI = []
 
 
@@ -44,20 +44,20 @@ for exp in exps:
             line = line.strip().split(', ')
             if line[0] == 'PGU':
                 PGU.append(float(line[1]))
-            elif line[0] == 'PGU_adjusted':
-                PGU_adjusted.append(float(line[1]))
+            #elif line[0] == 'PGU_adjusted':
+            #    PGU_adjusted.append(float(line[1]))
             elif line[0] == 'PGI':
                 PGI.append(float(line[1]))
 assert len(PGU) == len(exps)
 print("Local Prediction Gaps")
-print(f"  PGU: {np.round(np.mean(PGU) , 2)} +- {np.round(np.std(PGU) , 2)}")
-print(f"      adjusted: {np.round(np.mean(PGU_adjusted) , 2)} +- {np.round(np.std(PGU_adjusted) , 2)}")
-print(f"  PGI: {np.round(np.mean(PGI) , 2)} +- {np.round(np.std(PGI) , 2)}")
+print(f"  PGU: {np.round(np.mean(PGU) , 1)} +- {np.round(np.std(PGU) , 1)}")
+# print(f"      adjusted: {np.round(np.mean(PGU_adjusted) , 2)} +- {np.round(np.std(PGU_adjusted) , 2)}")
+print(f"  PGI: {np.round(np.mean(PGI) , 1)} +- {np.round(np.std(PGI) , 1)}")
 
 
 # Summarize global PGs
 PGU = []
-PGU_adjusted = []
+# PGU_adjusted = []
 PGI = []
 PGR = []
 
@@ -70,8 +70,8 @@ for exp in exps:
             if line[0] == 'sum':
                 if line[1] == 'PGU':
                     PGU.append(float(line[2]))
-                elif line[1] == 'PGU_adjusted':
-                    PGU_adjusted.append(float(line[2]))
+                #elif line[1] == 'PGU_adjusted':
+                #    PGU_adjusted.append(float(line[2]))
                 elif line[1] == 'PGI':
                     PGI.append(float(line[2]))
             if line[0] == 'PGR':
@@ -79,10 +79,10 @@ for exp in exps:
 assert len(PGU) == len(exps)
 print(' ')
 print("Global Prediction Gaps")
-print(f"  PGU: {np.round(np.mean(PGU) , 2)} +- {np.round(np.std(PGU) , 2)}")
-print(f"      adjusted: {np.round(np.mean(PGU_adjusted) , 2)} +- {np.round(np.std(PGU_adjusted) , 2)}")
-print(f"  PGI: {np.round(np.mean(PGI) , 2)} +- {np.round(np.std(PGI) , 2)}")
-print(f"  PGR: {np.round(np.mean(PGR) , 2)} +- {np.round(np.std(PGR) , 2)}")
+print(f"  PGU: {np.round(np.mean(PGU) , 1)} +- {np.round(np.std(PGU) , 1)}")
+#print(f"      adjusted: {np.round(np.mean(PGU_adjusted) , 2)} +- {np.round(np.std(PGU_adjusted) , 2)}")
+print(f"  PGI: {np.round(np.mean(PGI) , 1)} +- {np.round(np.std(PGI) , 1)}")
+print(f"  PGR: {np.round(np.mean(PGR) , 1)} +- {np.round(np.std(PGR) , 1)}")
 
 
 # Summarize FA
