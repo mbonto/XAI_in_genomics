@@ -401,6 +401,7 @@ def prediction_gap_with_dataloader(model, loader, transform, gap, baseline, stud
     # Informations
     assert len(studied_class) > 0, "Provide a list of classes to consider for computing the PGs."
     n_feat = baseline.shape[1]
+    n_class = model.variables["nb_classes"]
     device = model.fc.weight.device
     n_point = int(n_feat / gap)
 
@@ -425,7 +426,7 @@ def prediction_gap_with_dataloader(model, loader, transform, gap, baseline, stud
         y = y.numpy()
         if transform:
             x = transform(x)
-        _class = torch.argmax(model(x), axis=1).cpu().numpy() * 1.
+        _class = ((model(x) > 0.5).reshape(-1) * 1.).cpu().numpy() if n_class == 2 else torch.argmax(model(x), axis=1).cpu().numpy() * 1.
 
         # Sanity checks
         ## Check data order with true classes
@@ -436,18 +437,18 @@ def prediction_gap_with_dataloader(model, loader, transform, gap, baseline, stud
             assert (_class == y_pred[count:count + batch_size]).all(), 'Problem with model.'
 
         # Prediction gap estimated on n_point
-        pred_full = model(x)[np.arange(batch_size), y].detach().cpu().numpy()
+        pred_full = model(x).reshape(-1).detach().cpu().numpy() if n_class == 2 else model(x)[np.arange(batch_size), y].detach().cpu().numpy()
         pred_gap = np.zeros((batch_size, n_point))
 
         for i in range(n_point):
             s = np.repeat(np.arange(batch_size), gap)
-            if len(indices) != batch_size:
+            if len(indices) == 1:
                 f = np.tile(indices[0, i * gap:i * gap + gap], batch_size)
             else:
-                f = indices[:, i * gap:i * gap + gap].reshape(-1)
+                f = indices[count:count + batch_size][:, i * gap:i * gap + gap].reshape(-1)
             x[s, f] = baseline[np.repeat(np.zeros(batch_size), gap), f].clone().detach().to(device)
             pred = model(x)
-            pred = pred[np.arange(batch_size), y].detach().cpu().numpy()
+            pred = pred.reshape(-1).detach().cpu().numpy() if n_class == 2 else pred[np.arange(batch_size), y].detach().cpu().numpy()
             with np.errstate(divide='ignore', invalid='ignore', over='ignore'):  # do not print warning related to division by 0
                 pred_gap[:, i] = (pred_full - pred) / pred_full
         with np.errstate(divide='ignore', invalid='ignore', over='ignore'):
@@ -456,7 +457,7 @@ def prediction_gap_with_dataloader(model, loader, transform, gap, baseline, stud
 
         # Add a last point if not all features have been masked yet
         if n_feat % gap != 0:
-            pred = model(baseline)[np.zeros(batch_size), y].detach().cpu().numpy()
+            pred = model(baseline)[np.zeros(batch_size), 0].detach().cpu().numpy() if n_class == 2 else model(baseline)[np.zeros(batch_size), y].detach().cpu().numpy()
             with np.errstate(divide='ignore', invalid='ignore', over='ignore'):
                 pred_gap_last_point = (pred_full - pred) / pred_full
                 mask = (pred_gap_last_point) > 0 * 1.0
@@ -481,7 +482,7 @@ def prediction_gap_with_dataloader(model, loader, transform, gap, baseline, stud
 
 
 
-def prediction_gap_for_an_example(model, x, y, transform, gap, baseline, indices):
+def prediction_gap_for_an_example(model, x, y, n_class, transform, gap, baseline, indices):
     """
     Return the prediction gap (PG) computed on an example `x` of a given class `y`. 
 
@@ -498,32 +499,38 @@ def prediction_gap_for_an_example(model, x, y, transform, gap, baseline, indices
         model  --  Torch model or sklearn model.
         x  --  Example (1, n_feat). Tensor (torch) or array (sklearn).
         y  --  Class of `x`. Integer.
-        transform  --  Function scaling the input `x`.
+        n_class --  Number of classes.
+        transform  --  Function scaling the input `x`. Only used with a torch model.
         gap  --  Area computed with the rectangle rule using points computed iteratively by masking `gap` more features each time.
         baseline  --  Values used to mask the features (1, n_feat). Tensor (torch) or array (sklearn). 
         indices  --  Order of features to be masked. Array (1, n_feat).
     """
     # Informations
     n_feat = x.shape[1]
-    model_type = type(model).split('.')[0]
-    print("Model type", model_type)
+    model_type = str(type(model)).split('.')[0][8:]
+    print(model_type)
 
     if model_type != "sklearn":
         device = model.fc.weight.device
-        # Transform x
         x = x.to(device)
         if transform:
             x = transform(x)
             
     # Prediction gap estimated on n_point
     n_point = int(n_feat / gap)
-    pred_full = model.predict_proba(x)[0, y] if model_type == "sklearn" else model(x)[0, y].detach().cpu().numpy()
+    if model_type == "sklearn":
+        pred_full = model.predict_proba(x)[0, y]
+    else:
+        pred_full = model(x).reshape(-1).detach().cpu().numpy() if n_class == 2 else model(x)[0, y].detach().cpu().numpy()
     pred_gap = np.zeros((n_point))
     for i in range(n_point):
         s = np.repeat(np.arange(1), gap)
         f = indices[0, i * gap:i * gap + gap]
         x[s, f] = baseline[s, f].copy() if model_type == "sklearn" else baseline[s, f].clone().detach().to(device)
-        pred = model.predict_proba(x)[0, y] if model_type == "sklearn" else model(x)[0, y].detach().cpu().numpy()
+        if model_type == "sklearn":
+            pred = model.predict_proba(x)[0, y]
+        else:
+            pred = model(x).reshape(-1).detach().cpu().numpy() if n_class == 2 else model(x)[0, y].detach().cpu().numpy()
         pred_gap[i] = (pred_full - pred) / pred_full
     mask = (pred_gap) > 0 * 1.0
     curve = list(mask * pred_gap)
@@ -531,13 +538,17 @@ def prediction_gap_for_an_example(model, x, y, transform, gap, baseline, indices
 
     # Add a last point if not all features have been masked yet
     if n_feat % gap != 0:
-        pred = model.predict_proba(baseline)[0, y] if model_type == "sklearn" else model(baseline)[0, y].detach().cpu().numpy()
+        if model_type == "sklearn":
+            pred = model.predict_proba(baseline)[0, y]
+        else:
+            pred = model(baseline).reshape(-1).detach().cpu().numpy() if n_class == 2 else model(baseline)[0, y].detach().cpu().numpy()
         pred_gap_last_point = (pred_full - pred) / pred_full
         mask = (pred_gap_last_point) > 0 * 1.0
         curve.append(mask * pred_gap_last_point)
         PG += (mask * pred_gap_last_point) * (n_feat % gap) / n_feat
 
     return PG, curve
+
 
 
 def get_features_order(attr, _type="increasing"):
@@ -664,7 +675,6 @@ def prediction_gap_with_dataset(model, X, y, gap, baseline, studied_class, indic
         y  --  Labels. Array (n_sample,).
         gap  --  Area computed with the rectangle rule using points computed iteratively by masking `gap` more features each time.
         baseline  --  Values used to mask the features. Array (1, n_feat).
-        baseline  --  Values used to modify the values of the input features. Tensor (1, n_feat).
         studied_class  --  Compute the PGs for all examples belonging to a class listed in `studied_class`. List of integers.
         indices  --  Order of features to be masked. Array (1, n_feat).
     """
@@ -687,7 +697,6 @@ def prediction_gap_with_dataset(model, X, y, gap, baseline, studied_class, indic
     _class = model.predict(X)
 
     # Prediction gap estimated on n_point
-    # print(model.predict_proba(X).shape, n_sample, y.shape)
     pred_full = model.predict_proba(X)[np.arange(n_sample), y]
     pred_gap = np.zeros((n_sample, n_point))
 

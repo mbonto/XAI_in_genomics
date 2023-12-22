@@ -10,7 +10,7 @@ from setting import *
 # Arguments
 argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="Dataset name")
-argParser.add_argument("-m", "--model", type=str, help="Model name (LR, MLP, DiffuseLR, DiffuseMLP, LR_L1_penalty)")
+argParser.add_argument("-m", "--model", type=str, help="Model name (LR, MLP, GCN, LR_L1_penalty)")
 argParser.add_argument("--n_repet", type=int, help="Results are averaged for all experiments between 1 and `n_repet`")
 args = argParser.parse_args()
 name = args.name
@@ -38,7 +38,7 @@ for exp in exps:
         for line in lines:
             line = line.strip().split(', ')
             if line[0] == 'train':
-                assert float(line[1]) > 99
+                assert float(line[1]) > 99, f"repet {exp} train acc {line[1]}"
                 train_acc.append(float(line[1]))
             if line[0] == 'test':
                 test_acc.append(float(line[1]))

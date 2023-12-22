@@ -40,10 +40,10 @@ def select_features_with_PCA(X, n_PC=3):
 ## With labels
 def select_features_with_F_test(X, y):
     """
-    Return an array of shape (n_feat) containing the F-statistic for each feature. 
+    Return an array of shape (n_feat) containing the p-value associated with the F-statistic for each feature. 
     """
     scores, p = f_classif(X, y)  # p are the associated p_values.
-    return scores
+    return p
 
 
 def select_features_with_mutual_information(X, y):

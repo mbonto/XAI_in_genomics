@@ -25,6 +25,7 @@ def compute_attributes_from_a_dataloader(model, dataloader, transform, device, s
     assert len(studied_class) > 0, "Provide a list of classes to consider for computing the attributions."
     x, _ =  next(iter(dataloader))
     n_feat = x.shape[1]
+    n_class = model.variables["nb_classes"]
     n_sample = 0
     for x, y in dataloader:
         n_sample += torch.sum(sum(y == c for c in studied_class)).item()
@@ -57,7 +58,10 @@ def compute_attributes_from_a_dataloader(model, dataloader, transform, device, s
             valid = False
             add = 0
             while not valid:
-                attrs = xai.attribute(x, target=target, n_steps=n_steps+add, baselines=baseline, internal_batch_size=batch_size)
+                if n_class == 2:
+                    attrs = xai.attribute(x, n_steps=n_steps+add, baselines=baseline, internal_batch_size=batch_size)
+                else:
+                    attrs = xai.attribute(x, target=target, n_steps=n_steps+add, baselines=baseline, internal_batch_size=batch_size)
                 gap = check_ig_from_array(attrs.cpu().detach().numpy(), model, x, target, baseline)
                 if gap > 1:
                     add += n_steps
@@ -66,10 +70,13 @@ def compute_attributes_from_a_dataloader(model, dataloader, transform, device, s
                     valid = True
             attr[count:count + batch_size, :] = attrs
         elif method == "Kernel_Shap":
-            attr[count:count + batch_size, :] = xai.attribute(x, target=target, n_samples=n_samples)
-        outputs = model(x)
-        _, pred = torch.max(outputs.data, 1)
+            attr[count:count + batch_size, :] = xai.attribute(x, target=target, n_samples=n_samples)  ## to update
         
+        outputs = model(x)
+        if n_class == 2:
+            pred = (outputs.data > 0.5).reshape(-1) * 1
+        else:
+            _, pred = torch.max(outputs.data, 1)
         y_true[count:count + batch_size] = target.cpu().detach().numpy()
         y_pred[count:count + batch_size] = pred.cpu().detach().numpy()
         count = count + batch_size
@@ -93,6 +100,7 @@ def check_ig_from_a_dataloader(attr, model, dataloader, transform, device, basel
         studied_class  --  Compute the scores for all examples belonging to a class in `studied_class`. List of integers.
         show  --  Show the plot or not. True or False.
     """
+    n_class = model.variables["nb_classes"]
     _sum = np.round(np.sum(attr, axis=1) * 100, decimals=2)
     n_sample = len(attr)
     output_X = np.zeros(n_sample)
@@ -114,8 +122,12 @@ def check_ig_from_a_dataloader(attr, model, dataloader, transform, device, basel
             
         target = target.to(device)
         
-        output_X[count:count + batch_size] = torch.take_along_dim(model(x), target.reshape(-1, 1), dim=1).reshape(-1).cpu().detach().numpy()
-        output_baseline[count:count + batch_size] = torch.take_along_dim(model(baseline).repeat(x.shape[0], 1), target.reshape(-1, 1), dim=1).reshape(-1).cpu().detach().numpy()
+        if n_class == 2:
+            output_X[count:count + batch_size] = model(x).reshape(-1).cpu().detach().numpy()
+            output_baseline[count:count + batch_size] = model(baseline).repeat(x.shape[0], 1).reshape(-1).cpu().detach().numpy()
+        else:
+            output_X[count:count + batch_size] = torch.take_along_dim(model(x), target.reshape(-1, 1), dim=1).reshape(-1).cpu().detach().numpy()
+            output_baseline[count:count + batch_size] = torch.take_along_dim(model(baseline).repeat(x.shape[0], 1), target.reshape(-1, 1), dim=1).reshape(-1).cpu().detach().numpy()
         count = count + batch_size
     
     diff = np.round((output_X - output_baseline) * 100, 2)
@@ -146,10 +158,15 @@ def check_ig_from_array(attr, model, x, target, baseline):
     target  --  Labels, tensor (n_sample).
     baseline  -- Reference input, tensor (1, n_feat).
     """
+    n_class = model.variables["nb_classes"]
     _sum = np.round(np.sum(attr, axis=1) * 100, decimals=2)
 
-    output_X = torch.take_along_dim(model(x), target.reshape(-1, 1), dim=1).reshape(-1).cpu().detach().numpy()
-    output_baseline = torch.take_along_dim(model(baseline).repeat(x.shape[0], 1), target.reshape(-1, 1), dim=1).reshape(-1).cpu().detach().numpy()
+    if n_class == 2:
+        output_X = model(x).reshape(-1).cpu().detach().numpy()
+        output_baseline = model(baseline).repeat(x.shape[0], 1).reshape(-1).cpu().detach().numpy()
+    else:
+        output_X = torch.take_along_dim(model(x), target.reshape(-1, 1), dim=1).reshape(-1).cpu().detach().numpy()
+        output_baseline = torch.take_along_dim(model(baseline).repeat(x.shape[0], 1), target.reshape(-1, 1), dim=1).reshape(-1).cpu().detach().numpy()
     diff = np.round((output_X - output_baseline) * 100, 2)
     
     return np.max(np.abs(_sum-diff))

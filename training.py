@@ -27,7 +27,10 @@ def train(model, criterion, optimizer, data_loader, device, transform=None, shuf
         optimizer.zero_grad()
         # Forward + backward + optimize.
         outputs = model(x)
-        loss = criterion(outputs, y)
+        if len(outputs.data.shape) < 2:
+            loss = criterion(outputs, y.float())
+        else:
+            loss = criterion(outputs, y)
         loss.backward()  
         optimizer.step()
         count = count_correct_predictions(outputs.clone().detach(), y)
@@ -58,7 +61,10 @@ def predict(model, loader, device, transform=None, shuffle_feat=None, class_map=
                 y = torch.tensor(list(map(lambda x: class_map[x.item()], y))).to(device)
             # Forward.
             outputs = model(x)
-            _, pred = torch.max(outputs.data, 1)
+            if len(outputs.data.shape) < 2:
+                pred = (torch.sigmoid(outputs).data > 0.5) * 1
+            else:
+                _, pred = torch.max(outputs.data, 1)
             y_true = y_true + list(y.cpu().detach().numpy())
             y_pred = y_pred + list(pred.cpu().detach().numpy())
     return np.array(y_pred), np.array(y_true)

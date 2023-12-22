@@ -24,19 +24,19 @@ def get_hyperparameters(name, model_name):
         n_hidden_feat = None
         graph_name = None
         if model_name == "MLP":
-            if name in ["pancan", "KIRC", "BRCA", "SIMU1", "SIMU2", "SimuA", "SimuB", "SimuC", "demo", "demo1", "ttg-all", "BRCA-pam"]:
+            if name in ["pancan", "KIRC", "BRCA", "SIMU1", "SIMU2", "SimuA", "SimuB", "SimuC", "demo", "demo1", "BRCA-pam", "ttg-breast"]:
                 n_layer = 1
                 n_hidden_feat = 20
-            elif name in ["ttg-breast"]:
-                n_layer = 1
-                n_hidden_feat = 10
+            elif name in ["ttg-all"]:
+                n_layer = 2
+                n_hidden_feat = 40
         elif model_name == "DiffuseMLP":
             n_layer = 1
             n_hidden_feat = 20
         elif model_name == "GCN":
-            n_layers = {"BRCA": 3, "BRCA-pam": 1, "ttg-breast": 1, "ttg-all": 1, "pancan": 3}
-            n_hidden_feats = {"BRCA": 2, "BRCA-pam": 2, "ttg-breast": 1, "ttg-all": 1, "pancan": 2}
-            ks = {"BRCA": 2, "BRCA-pam": 10, "ttg-breast": 2, "ttg-all": 10, "pancan": 2}
+            n_layers = {"BRCA": 1, "BRCA-pam": 1, "ttg-breast": 1, "ttg-all": 1, "pancan": 1}
+            n_hidden_feats = {"BRCA": 2, "BRCA-pam": 2, "ttg-breast": 1, "ttg-all": 2, "pancan": 2}
+            ks = {"BRCA": 2, "BRCA-pam": 10, "ttg-breast": 10, "ttg-all": 2, "pancan": 2}
             n_layer = n_layers[name]
             n_hidden_feat = n_hidden_feats[name]
             k = ks[name]
@@ -48,12 +48,19 @@ def set_optimizer(name, model):
     n_epoch = 25
     weight_decay = 1e-4
     lr_gamma = 0.1
+    n_class = model.variables["nb_classes"]
     if model.name == "GCN":
         n_epoch = 15
-        criterion = nn.CrossEntropyLoss() # weight=torch.tensor([0.5, 5]))
+        if n_class == 2:
+            criterion = nn.BCEWithLogitsLoss()
+        else:
+            criterion = nn.CrossEntropyLoss()
         optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=weight_decay)
     else:
-        criterion = nn.CrossEntropyLoss()
+        if n_class == 2:
+            criterion = nn.BCEWithLogitsLoss()
+        else:
+            criterion = nn.CrossEntropyLoss()
         optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=weight_decay)
     scheduler = MultiStepLR(optimizer, milestones=[int(0.5 * n_epoch), int(0.9 * n_epoch)], gamma=lr_gamma)
     return criterion, optimizer, scheduler, n_epoch
@@ -152,8 +159,8 @@ def get_XAI_hyperparameters(name, n_class):
     IG scores will be computed.    
     """
     if name in ["BRCA", "KIRC", "SimuA", "SimuB", "SimuC", "demo"]:
-        base_class = 1
-        studied_class = [0,]
+        base_class = 0
+        studied_class = [1,]
     elif name in ["ttg-all", "ttg-breast"]:
         base_class = 0
         studied_class = [1,]

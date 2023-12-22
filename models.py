@@ -50,13 +50,22 @@ class LogisticRegression(nn.Module):
         self.variables = {"nb_classes": nb_classes, "nb_feat": nb_feat}
         self.drop = nn.Dropout(p=dropout)
         self.softmax = softmax
-        self.fc = nn.Linear(nb_feat, nb_classes)
+        if nb_classes == 2:
+            self.fc = nn.Linear(nb_feat, 1)
+        else:
+            self.fc = nn.Linear(nb_feat, nb_classes)
     
     def forward(self, x):
         x = self.drop(x)
         x = self.fc(x)
         if self.softmax:
-            x = F.softmax(x, dim=1)
+            if self.variables["nb_classes"] == 2:
+                x = torch.sigmoid(x)
+            else:
+                x = F.softmax(x, dim=1)
+        else:
+            if self.variables["nb_classes"] == 2:
+                x = x.reshape(-1)
         return x
     
     
@@ -126,7 +135,10 @@ class GCN(nn.Module):
         
 
         # Output
-        self.fc = nn.Linear(self.n_cluster[n_layer] * feat_list[-1], n_class)
+        if n_class == 2:
+            self.fc = nn.Linear(self.n_cluster[n_layer] * feat_list[-1], 1)
+        else:
+            self.fc = nn.Linear(self.n_cluster[n_layer] * feat_list[-1], n_class)
 
 
     def forward(self, x):
@@ -152,7 +164,13 @@ class GCN(nn.Module):
         x = self.fc(x)
         
         if self.softmax:
-            x = F.softmax(x, dim=1)
+            if self.variables["nb_classes"] == 2:
+                x = torch.sigmoid(x)
+            else:
+                x = F.softmax(x, dim=1)
+        else:
+            if self.variables["nb_classes"] == 2:
+                x = x.reshape(-1)
         return x
         
 
@@ -206,14 +224,23 @@ class MLP(nn.Module):
         self.layers = nn.Sequential(*layers)
         
         # Output
-        self.fc = nn.Linear(feat_list[-1], nb_classes)
+        if nb_classes == 2:
+            self.fc = nn.Linear(feat_list[-1], 1)
+        else:
+            self.fc = nn.Linear(feat_list[-1], nb_classes)
     
     def forward(self, x):
         x = self.drop(x)
         x = self.layers(x)
         x = self.fc(x)
         if self.softmax:
-            x = F.softmax(x, dim=1)
+            if self.variables["nb_classes"] == 2:
+                x = torch.sigmoid(x)
+            else:
+                x = F.softmax(x, dim=1)
+        else:
+            if self.variables["nb_classes"] == 2:
+                x = x.reshape(-1)
         return x
     
     

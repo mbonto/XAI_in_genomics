@@ -16,9 +16,9 @@ from XAI_method import *
 # Arguments
 argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="dataset name")
-argParser.add_argument("-m", "--model", type=str, help="model name (LR, MLP, DiffuseLR, DiffuseMLP)")
+argParser.add_argument("-m", "--model", type=str, help="model name (LR, MLP, GCN, LR_L1_penalty)")
 argParser.add_argument("--exp", type=int, help="experiment number", default=1)
-argParser.add_argument("--set", type=str, help="set (train or test)")
+argParser.add_argument("--set", type=str, help="set (train or test)", default="train")
 argParser.add_argument("--method", type=str, default='pearson_correlation', help="method used to compute the adjacency matrix of the graph")
 argParser.add_argument("--min_value", type=float, default=None, help="minimal value appearing in the adjacency matrix of the graph")
 args = argParser.parse_args()
@@ -68,19 +68,19 @@ if min_value is not None:
 print('Correlation done')
 save_npz(os.path.join(save_path, "graph", f'{set_name}_{method}_{min_value}_variables'), csc_matrix(A))
 
-# Diffusion version
-print("Computing the diffusing matrix between variables...")
-if len(A) <= 20000:
-    A = (A > 0) * A
-else:  # slower but use less memory
-    for i in range(len(A)):
-        print(i, end='\r')
-        A[i, :] = (A[i, :] > 0) * A[i, :]
-A = csc_matrix(A)
-D = get_normalized_adjaceny_matrix(A)
-save_npz(os.path.join(save_path, "graph", f'{set_name}_{method}_{min_value}_variables_diffusion'), D)
-del A, D
-print("Diffusion done")
+# # Diffusion version
+# print("Computing the diffusing matrix between variables...")
+# if len(A) <= 20000:
+#     A = (A > 0) * A
+# else:  # slower but use less memory
+#     for i in range(len(A)):
+#         print(i, end='\r')
+#         A[i, :] = (A[i, :] > 0) * A[i, :]
+# A = csc_matrix(A)
+# D = get_normalized_adjaceny_matrix(A)
+# save_npz(os.path.join(save_path, "graph", f'{set_name}_{method}_{min_value}_variables_diffusion'), D)
+# del A, D
+# print("Diffusion done")
 
 
 # Infer the adjacency matrix between samples

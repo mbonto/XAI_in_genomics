@@ -227,7 +227,10 @@ class TCGA_dataset(torch.utils.data.Dataset):
         # Remove unwanted labels and associate each remaining label with a number from 0 to number of classes - 1
         label_key = sorted(np.unique(list(self.labels.values)))
         self.label_key = clean_labels(label_key, database, cancer)
-        self.label_map = dict(zip(self.label_key, range(len(self.label_key))))
+        if database == 'gdc' and cancer == 'BRCA':
+            self.label_map = {'Solid Tissue Normal': 0, 'Primary Tumor': 1}
+        else:
+            self.label_map = dict(zip(self.label_key, range(len(self.label_key))))
         self.inv_label_map = {v: k for k, v in self.label_map.items()}
         
         # Remove the IDs of the samples which have no label

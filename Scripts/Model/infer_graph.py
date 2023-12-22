@@ -77,7 +77,6 @@ with open(os.path.join(save_path, 'graph', f'{method}_{k}_variables_min_value.tx
 del A
 
 
-"""
 # Infer the adjacency matrix between samples
 print("Computing the adjacency matrix between samples...")
 A = get_a_graph(X_train.T, method)
@@ -98,4 +97,4 @@ save_npz(os.path.join(save_path, 'graph', f'{method}_{k}_samples'), csc_matrix(A
 with open(os.path.join(save_path, 'graph', f'{method}_{k}_samples_min_value.txt'), "w") as f:
     f.write(f"Minimal edge weight: {min_value}")
 print('Correlation done')
-"""
+

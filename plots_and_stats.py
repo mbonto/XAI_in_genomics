@@ -20,7 +20,7 @@ def describe_dataset(data):
         classes[y] += 1
     for label in data.label_key:
         index = data.label_map[label]
-        print(f'\t{label}: {int(classes[index])}')
+        print(f'\t{label} (y={index}): {int(classes[index])}')
     # Number of features
     for X, y in data:
         n_feat = X.shape[0]
@@ -356,36 +356,41 @@ def plot_draws_from_Dirichlet(dict_real, label_key, label_var, save_name):
 
 
 def plot_average_signals(X, y, n_variable=None, save_name=None):
-    n_class = len(np.unique(y))
-    colors = sns.color_palette(None, n_class)
+    classes = np.unique(y)
+    colors = sns.color_palette(None, len(classes))
     plt.figure(figsize=(10, 1))
-    for c in range(n_class):
+    for i, c in enumerate(classes):
         mean = np.mean(X[y==c], axis=0)
         std = np.std(X[y==c], axis=0)
-        plt.errorbar(np.arange(len(mean))[:n_variable], mean[:n_variable], yerr=std[:n_variable], color=colors[c], label=f"class {c}")
+        plt.errorbar(np.arange(len(mean))[:n_variable], mean[:n_variable], yerr=std[:n_variable], color=colors[i], label=f"class {c}")
     plt.xlabel("Variables")
     plt.ylabel("Values")
-    plt.legend(ncol=math.ceil(n_class/2), loc='upper center', bbox_to_anchor=(0.5, 1.7), fancybox=True, shadow=False)
+    plt.legend(ncol=math.ceil(len(classes)/2), loc='upper center', bbox_to_anchor=(0.5, 1.7), fancybox=True, shadow=False)
     if save_name is not None:
         plt.savefig(save_name, bbox_inches='tight')
     plt.show()
     
     
 def plot_random_signals(X, y, n_sample_per_class=1, n_variable=None, save_name=None, legend=True):
-    n_class = len(np.unique(y))
+    classes = np.unique(y)
+    n_class = len(classes)
     colors = sns.color_palette(None, n_class)
-    count_per_class = np.zeros(n_class)
+    _map = {}
+    count_per_class = {}
+    for i, c in enumerate(classes):
+        _map[c] = i
+        count_per_class[c] = 0
     plt.figure(figsize=(10, 1))
     indices = np.arange(X.shape[0])
     random.shuffle(indices)
     i = 0
-    while np.sum(count_per_class) != n_sample_per_class * n_class and i != X.shape[0]:
+    while np.sum(count_per_class.values()) != n_sample_per_class * n_class and i != X.shape[0]:
         if count_per_class[y[indices[i]]] < n_sample_per_class:
             if count_per_class[y[indices[i]]] == 0:
                 label = f"class {y[indices[i]]}"
             else:
                 label = None
-            plt.plot(X[indices[i], :n_variable], color=colors[y[indices[i]]], label=label)
+            plt.plot(X[indices[i], :n_variable], color=colors[_map[y[indices[i]]]], label=label)
             count_per_class[y[indices[i]]] += 1
         i += 1
     plt.xlabel("Variables")
@@ -395,7 +400,7 @@ def plot_random_signals(X, y, n_sample_per_class=1, n_variable=None, save_name=N
     if save_name is not None:
         plt.savefig(save_name, bbox_inches='tight')
     plt.show()
-    
+
 
     
 def print_average_signals(X, y, var_list=[0, 1, 2]):

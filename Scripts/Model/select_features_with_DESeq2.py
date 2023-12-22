@@ -43,14 +43,18 @@ feat_name = np.array(feat_name)
 
 
 # Prepare data
-## Limma and Deseq2 require un-normalized counts or estimated counts of sequencing reads.
-## The unit of the gene expression levels is not the same across datasets.
-###    ttg-breast/all    unit: log2(norm_count + 1)  
-###    BRCA/KIRC         unit: log2(raw_count + 1)
-###    pancan            unit: norm_count
-###    BRCA-pam          unit: log2(norm_count + 1)
-## When applicable, we have to inverse the log2-transform: 2**data - 1.
-## For BRCA and KIRC, we also have to normalize the raw counts to make them comparable across samples: sum of counts per sample set to 10**6. 
+# Data unit
+## The unit of the gene expression is not the same across datasets.
+## ttg-breast/all    unit: log2(count_uq + 1)
+## BRCA/KIRC         unit: log2(count + 1)
+## pancan            unit: count_uq
+## BRCA-pam          unit: log2(count_uq + 1)
+# Data normalisation.
+## By default, the same normalisation strategy is applied to all datasets.
+##                   unit after normalisation: log2(norm_count + 1)
+# Data normalisation used for DESeq2 and Limma.
+## DeSEQ2
+##                  unit after normalisation: norm_count
 use_mean, use_std, log2, reverse_log2, divide_by_sum, factor = get_data_normalization_parameters(name)
 use_mean = False
 use_std = False
@@ -113,14 +117,14 @@ np.save(os.path.join(save_path, "figures", "DESeq2_results.npy"), results)
 # results = np.load(os.path.join(save_path, "figures", "DESeq2_results.npy"), allow_pickle=True).item()
 
 
-# Save the features (here, the genes) ranked by decreased log2FoldChange
+# Save the features (here, the genes) ranked by decreased adjusted p-value associated with log2FoldChange
 create_new_folder(os.path.join(save_path, "order"))
 check_feat_name = None
 highest_scores = None
 
 for label in results.keys():
-    scores = results[label]['x'].values
-    feat_name = np.array(results[label]['x'].index)
+    scores = results[label]['y'].values  # -np.log10(adjusted p-value)
+    feat_name = np.array(results[label]['y'].index)
     if check_feat_name is None:
         check_feat_name = feat_name.copy()
         highest_scores = scores.copy()
@@ -134,11 +138,11 @@ for label in results.keys():
         feat_name = feat_name[align_feat]
         scores = scores[align_feat]
         assert (check_feat_name == feat_name).all()
-        # Keep the maximal absolute log2FoldChange value per gene
-        highest_scores = np.maximum(np.abs(scores), np.abs(highest_scores))
-order = np.argsort(-np.abs(highest_scores))
-order = feat_name[order]
-np.save(os.path.join(save_path, "order", f"order_{method}.npy"), order)
+        # Keep the minimal adjusted p-value per gene
+        highest_scores = np.maximum(scores, highest_scores)
+order = np.argsort(-highest_scores)
+np.save(os.path.join(save_path, "order", f"order_{method}.npy"), feat_name[order])
+np.save(os.path.join(save_path, "order", f"order_{method}_values.npy"), highest_scores[order])
 
 
 

@@ -21,6 +21,7 @@ argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="dataset name")
 args = argParser.parse_args()
 name = args.name
+n_repet = 10
 
 
 # Path
@@ -29,38 +30,63 @@ data_path = get_data_path(name)
 
 
 # Load data
-use_DE = True
 feat_name = np.array(json.load(open(os.path.join(save_path, "genesIds.txt"))))
 n_feat = len(feat_name)
-order_var = np.load(os.path.join(save_path, "order", "order_var.npy"))
-order_PCA_PC1 = np.load(os.path.join(save_path, "order", "order_PCA_PC1.npy"))
-order_F = np.load(os.path.join(save_path, "order", "order_F.npy"))
-order_MI = np.load(os.path.join(save_path, "order", "order_MI.npy"))
-order_L1 = np.load(os.path.join(save_path, "order", "order_L1_exp_1.npy"))
+order_VAR = {1: np.load(os.path.join(save_path, "order", "order_var.npy"))}
+order_PCA = {1: np.load(os.path.join(save_path, "order", "order_PCA_PC1.npy"))}
+# order_F = np.load(os.path.join(save_path, "order", "order_F.npy"))
+order_MI = {1: np.load(os.path.join(save_path, "order", "order_MI.npy"))}
 # order_limma = np.load(os.path.join(save_path, "order", "order_limma.npy"), allow_pickle=True)
-if use_DE:
-    order_DE = np.load(os.path.join(save_path, "order", "order_DESeq2.npy"), allow_pickle=True) 
-order_IG_MLP = np.load(os.path.join(save_path, "order", "order_IG_MLP_set_train_exp_1.npy"), allow_pickle=True) 
-order_IG_LR = np.load(os.path.join(save_path, "order", "order_IG_LR_set_train_exp_1.npy"), allow_pickle=True) 
-order_IG_GCN = np.load(os.path.join(save_path, "order", "order_IG_GCN_set_train_exp_1.npy"), allow_pickle=True) 
+order_DE = {1: np.load(os.path.join(save_path, "order", "order_DESeq2.npy"), allow_pickle=True)} 
+order_weight_L1 = {}
+order_weight_LR = {}
+if name in ['temp',]:  # 'ttg-breast', 'BRCA', 'ttg-all']:
+    order_effect_L1 = {}
+    order_effect_LR = {}
+    order_effect_wrt_baseline_L1 = {}
+    order_effect_wrt_baseline_LR = {}
+order_IG_MLP = {}
+order_IG_LR = {}
+order_IG_GCN = {}
+order_IG_L1 = {}
+for exp in range(1, n_repet+1):
+    order_weight_L1[exp] = np.load(os.path.join(save_path, "order", f"order_weight_LR_L1_penalty_exp_{exp}.npy"))
+    order_weight_LR[exp] = np.load(os.path.join(save_path, "order", f"order_weight_LR_exp_{exp}.npy"))
+    if name in ['temp',]:  # 'ttg-breast', 'BRCA', 'ttg-all']:
+        order_effect_L1[exp] = np.load(os.path.join(save_path, "order", f"order_effect_LR_L1_penalty_exp_{exp}.npy"))
+        order_effect_LR[exp] = np.load(os.path.join(save_path, "order", f"order_effect_LR_exp_{exp}.npy"))
+        order_effect_wrt_baseline_L1[exp] = np.load(os.path.join(save_path, "order", f"order_effect_wrt_baseline_LR_L1_penalty_exp_{exp}.npy"))
+        order_effect_wrt_baseline_LR[exp] = np.load(os.path.join(save_path, "order", f"order_effect_wrt_baseline_LR_exp_{exp}.npy"))
+    order_IG_MLP[exp] = np.load(os.path.join(save_path, "order", f"order_IG_MLP_set_train_exp_{exp}.npy"), allow_pickle=True) 
+    order_IG_LR[exp] = np.load(os.path.join(save_path, "order", f"order_IG_LR_set_train_exp_{exp}.npy"), allow_pickle=True) 
+    order_IG_GCN[exp] = np.load(os.path.join(save_path, "order", f"order_IG_GCN_set_train_exp_{exp}.npy"), allow_pickle=True) 
+    order_IG_L1[exp] = np.load(os.path.join(save_path, "order", f"order_IG_LR_L1_penalty_set_train_exp_{exp}.npy"))
 
 
-assert len(order_var) == n_feat
-assert len(order_PCA_PC1) == n_feat
-assert len(order_F) == n_feat
-assert len(order_MI) == n_feat
-assert len(order_L1) == n_feat
+assert len(order_VAR[1]) == n_feat
+assert len(order_PCA[1]) == n_feat
+# assert len(order_F) == n_feat
+assert len(order_MI[1]) == n_feat
 # assert len(order_limma) == n_feat
-if use_DE:
-    assert len(order_DE) == n_feat
-assert len(order_IG_MLP) == n_feat
-assert len(order_IG_LR) == n_feat
-assert len(order_IG_GCN) == n_feat
+assert len(order_DE[1]) == n_feat
+for exp in range(1, n_repet+1):
+    assert len(order_weight_L1[exp]) == n_feat
+    assert len(order_weight_LR[exp]) == n_feat
+    if name in ['temp',]:  # 'ttg-breast', 'BRCA', 'ttg-all']:
+        assert len(order_effect_L1[exp]) == n_feat
+        assert len(order_effect_wrt_baseline_L1[exp]) == n_feat
+        assert len(order_effect_LR[exp]) == n_feat
+        assert len(order_effect_wrt_baseline_LR[exp]) == n_feat
+    assert len(order_IG_MLP[exp]) == n_feat
+    assert len(order_IG_LR[exp]) == n_feat
+    assert len(order_IG_GCN[exp]) == n_feat
+    assert len(order_IG_L1[exp]) == n_feat
 
 
 ###############################################################################################################
 ############################################ METHOD OVERLAP 1: CURVES #########################################
 ###############################################################################################################
+"""
 n_args = [1, 5, 10, 50, 100, 500, 1000, 5000, 10000, 20000, 30000]
 avg_jaccard_scores_var = []
 avg_jaccard_scores_PCA = []
@@ -151,60 +177,86 @@ plt.ylabel(f"Average Jaccard score \n(LR+L2 vs other methods)")
 plt.legend(loc='center right', bbox_to_anchor=(1.25, 0.5))
 plt.savefig(os.path.join(save_path, "figures", "jaccard_plots.png"), bbox_inches='tight')
 
-
+"""
 ###############################################################################################################
 ############################################ METHOD OVERLAP 2: HEATMAPS #######################################
 ###############################################################################################################
-n_args = [1, 5, 10, 50, 100, 500, 1000, 5000, 10000]
-
+n_args = [10, 100] # 1, 5, 10, 50, 100, 500, 1000, 5000, 10000]
 hm = {}
+
 for n in n_args:
-    if use_DE:
-        data = {'VAR': list(order_var[:n]),
-            'PCA': list(order_PCA_PC1[:n]),
-            'F': list(order_F[:n]),
-            'MI': list(order_MI[:n]),
-            # 'chi2': list(order_chi2[:n]),
-            #'Limma': list(order_limma[:n]),
-            'DE': list(order_DE[:n]),
-            'LR+L1': list(order_L1[:n]),
-            'MLP': list(order_IG_MLP[:n]),
-            'GCN': list(order_IG_GCN[:n]),
-            'LR+L2': list(order_IG_LR[:n]),
-            # 'Tree': list(order_Tree[:n]),
-           }
-    else:
-        data = {'VAR': list(order_var[:n]),
-            'PCA': list(order_PCA_PC1[:n]),
-            'F': list(order_F[:n]),
-            'MI': list(order_MI[:n]),
-            # 'chi2': list(order_chi2[:n]),
-            #'Limma': list(order_limma[:n]),
-            'LR+L1': list(order_L1[:n]),
-            'MLP': list(order_IG_MLP[:n]),
-            'GCN': list(order_IG_GCN[:n]),
-            'LR+L2': list(order_IG_LR[:n]),
-            # 'Tree': list(order_Tree[:n]),
-           }
-    
-    x = [(k1, k2, len(set(d1) & set(d2))) for k1,d1 in data.items() for k2,d2 in data.items()]
+    data = {
+            'VAR': {},
+            'PCA': {},
+            'MI': {},
+            'DE': {},
+            'LR+L1 (weight)': {},
+            'LR+L2 (weight)':{},
+            'LR+L1 (IG)': {},
+            'LR+L2 (IG)': {},
+            'MLP': {},
+            'GNN':{}
+            }
+    if name in ['temp',]:  # 'BRCA', 'ttg-all', 'ttg-breast']:
+        data['LR+L1 (effect)'] = {}
+        data['LR+L2 (effect)'] = {}
+        data['LR+L1 (effect-b)'] = {}
+        data['LR+L2 (effect-b)'] = {}
+    data['VAR'][1] = list(order_VAR[1][:n])
+    data['PCA'][1] = list(order_PCA[1][:n])
+    data['MI'][1] = list(order_MI[1][:n])
+    data['DE'][1] =  list(order_DE[1][:n])
+    for exp in range(1, n_repet+1):
+        data['LR+L1 (weight)'][exp] = list(order_weight_L1[exp][:n])
+        data['LR+L2 (weight)'][exp] = list(order_weight_LR[exp][:n])
+        data['LR+L1 (IG)'][exp] = list(order_IG_L1[exp][:n])
+        data['LR+L2 (IG)'][exp] = list(order_IG_LR[exp][:n])
+        data['MLP'][exp] = list(order_IG_MLP[exp][:n])
+        data['GNN'][exp] = list(order_IG_GCN[exp][:n])
+        if name in ['temp',]: #  'BRCA', 'ttg-all', 'ttg-breast']:
+            data['LR+L1 (effect)'][exp] = list(order_effect_L1[exp][:n])
+            data['LR+L2 (effect)'][exp] = list(order_effect_LR[exp][:n])
+            data['LR+L1 (effect-b)'][exp] = list(order_effect_wrt_baseline_L1[exp][:n])
+            data['LR+L2 (effect-b)'][exp] = list(order_effect_wrt_baseline_LR[exp][:n])
+       
+    x = []
+    for k1 in data.keys():
+        for k2 in data.keys():
+            n_repet_k1 = len(data[k1].keys())
+            n_repet_k2 = len(data[k2].keys())
+            # print('repet', k1, k2, n_repet_k1, n_repet_k2)
+            count = 0
+            for i in range(1, n_repet_k1+1):
+                for j in range(1, n_repet_k2+1):
+                    if k1 == k2 and i == j:
+                        pass
+                    else:
+                        count += len(set(data[k1][i]) & set(data[k2][j]))
+            if k1 == k2 and n_repet_k1 == 1:
+                count = len(set(data[k1][i]))
+            else:
+                count = count / (n_repet_k1 * n_repet_k2) if k1 != k2 else count / (n_repet_k1 * n_repet_k2 - n_repet_k1)
+            # print('count', k1, k2, count)
+            x.append((k1, k2, count))
+
+    # x = [(k1, k2, len(set(d1) & set(d2))) for k1,d1 in data.items() for k2,d2 in data.items()]
     df = pd.DataFrame(x).pivot(index=0, columns=1, values=2)
-    if use_DE:
-        df = df[['VAR', 'PCA', 'DE', 'F', 'MI', 'MLP', 'GCN', 'LR+L2', 'LR+L1']]  # Limma
-        df = df.reindex(['VAR', 'PCA', 'DE', 'F', 'MI', 'MLP', 'GCN', 'LR+L2', 'LR+L1'])  # Limma
+    if name in ['temp', ]:  # 'BRCA', 'ttg-all', 'ttg-breast']:
+        df = df[['VAR', 'PCA', 'MI', 'DE', 'LR+L1 (weight)', 'LR+L1 (effect)', 'LR+L1 (effect-b)', 'LR+L1 (IG)', 'LR+L2 (weight)', 'LR+L2 (effect)', 'LR+L2 (effect-b)', 'LR+L2 (IG)', 'MLP', 'GNN']]
+        df = df.reindex(['VAR', 'PCA', 'MI', 'DE', 'LR+L1 (weight)', 'LR+L1 (effect)', 'LR+L1 (effect-b)', 'LR+L1 (IG)', 'LR+L2 (weight)', 'LR+L2 (effect)', 'LR+L2 (effect-b)', 'LR+L2 (IG)', 'MLP', 'GNN'])
     else:
-        df = df[['VAR', 'PCA', 'F', 'MI', 'MLP', 'GCN', 'LR+L2', 'LR+L1']]  # Limma
-        df = df.reindex(['VAR', 'PCA', 'F', 'MI', 'MLP', 'GCN', 'LR+L2', 'LR+L1'])  # Limma
-    if n == 100:
-        df_100 = df.copy()
-        matrix_triu = np.triu(np.ones(np.shape(df_100)))
+        df = df[['VAR', 'PCA', 'MI', 'DE', 'LR+L1 (weight)', 'LR+L1 (IG)', 'LR+L2 (weight)', 'LR+L2 (IG)', 'MLP', 'GNN']]
+        df = df.reindex(['VAR', 'PCA', 'MI', 'DE', 'LR+L1 (weight)', 'LR+L1 (IG)', 'LR+L2 (weight)', 'LR+L2 (IG)', 'MLP', 'GNN'])
+    if n == 10:
+        df_10 = (df.copy() * 10).round().astype(int)
+        matrix_triu = np.triu(np.ones(np.shape(df_10)))
+        print(n, "features")
+        print(df_10.to_numpy())
+    elif n == 100:
+        df_100 = (df.copy()).round().astype(int)
+        matrix_tril = np.tril(np.ones(np.shape(df_100)), -1)
         print(n, "features")
         print(df_100.to_numpy())
-    elif n == 1000:
-        df_1000 = (df.copy() / 10).round().astype(int)
-        matrix_tril = np.tril(np.ones(np.shape(df_1000)))
-        print(n, "features")
-        print(df_1000.to_numpy())
     plt.figure(figsize=(20, 20))
     sns.heatmap(df)
     plt.xlabel('')
@@ -212,13 +264,13 @@ for n in n_args:
     # plt.savefig(os.path.join(save_path, "figures", f"heatmap_FS_{n}.png"), bbox_inches='tight')
 
 
-# Heatmap 100 vs 1000 features
+# Heatmap 10 vs 100 features
 plt.figure(figsize=(20, 20))
-sns.heatmap(df_100, mask=matrix_triu, vmin=0, vmax=100, cbar=False, annot=True, cmap="BuPu", annot_kws={"fontsize":30})
-h = sns.heatmap(df_1000, mask=matrix_tril, vmin=0, vmax=100, annot=True, cmap="BuPu", annot_kws={"fontsize":30}, cbar_kws={"ticks":[0, 100]})
+sns.heatmap(df_10, mask=matrix_triu, vmin=0, vmax=100, cbar=False, annot=True, cmap="BuPu", annot_kws={"fontsize":30}, fmt='d')
+h = sns.heatmap(df_100, mask=matrix_tril, vmin=0, vmax=100, annot=True, cmap="BuPu", annot_kws={"fontsize":30}, cbar_kws={"ticks":[0, 100]}, fmt='d')
 # Labels
-plt.xlabel('Upper triangular: comparison among 1000 features', loc='right', labelpad=50, fontsize=30)
-plt.ylabel('Lower triangular: comparison among 100 features', loc='bottom', labelpad=50, fontsize=30)
+plt.xlabel('Upper triangular: comparison among 100 features', loc='right', labelpad=50, fontsize=30)
+plt.ylabel('Lower triangular: comparison among 10 features', loc='bottom', labelpad=50, fontsize=30)
 ax = plt.gca()
 ax.xaxis.set_label_position('top')
 # Ticks
@@ -228,4 +280,5 @@ cbar = h.figure.axes[-1]
 cbar.tick_params(labelsize=30)
 cbar.set_yticklabels(['0%', '100%'])
 # Save
-plt.savefig(os.path.join(save_path, "figures", f"heatmap_FS_100_vs_1000.png"), bbox_inches='tight')
+plt.savefig(os.path.join(save_path, "figures", f"heatmap_FS_10_vs_100.png"), bbox_inches='tight')
+

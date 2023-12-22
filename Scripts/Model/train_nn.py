@@ -23,7 +23,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # Arguments
 argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="dataset name")
-argParser.add_argument("-m", "--model", type=str, help="model name (LR, MLP, GNN)")
+argParser.add_argument("-m", "--model", type=str, help="model name (LR, MLP, GCN)")
 argParser.add_argument("--exp", type=int, help="experiment number", default=1)
 argParser.add_argument("--selection", type=str, help="method used to select features (var, PCA_PC1, F, MI, L1_exp_1, DESeq2, IG_LR_set_train_exp_1, IG_MLP_set_train_exp_1, IG_GCN_set_train_exp_1)")
 argParser.add_argument("--n_feat_selected", type=int, help="number of features selected.")
@@ -55,6 +55,9 @@ if device == 'cuda':
 
 # Dataset
 studied_features = get_selected_features(selection, selection_type, n_feat_selected, save_path)
+# print(studied_features)
+
+
 train_loader, test_loader, n_class, n_feat, class_name, feat_name, transform, n_sample = load_dataloader(data_path, name, device, studied_features=studied_features)
 if selection is None and n_feat_selected is None:
     print(f"In our dataset, we have {n_class} classes and {n_sample} examples. Each example contains {n_feat} features.")
@@ -127,4 +130,5 @@ if selection is None and n_feat_selected is None:
                 'test_acc': test_score,
                 'correct_test_indices': correct_test_indices,
                 }, os.path.join(save_path, save_name, "checkpoint.pt"))
+
 

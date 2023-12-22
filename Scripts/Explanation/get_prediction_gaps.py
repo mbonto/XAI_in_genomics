@@ -57,6 +57,7 @@ softmax = True
 n_layer, n_hidden_feat, graph_name = get_hyperparameters(name, model_name)
 model = load_model(model_name, n_feat, n_class, softmax, device, save_path, n_layer, n_hidden_feat, graph_name)
 
+
 # Parameters
 checkpoint = torch.load(os.path.join(save_path, save_name, 'checkpoint.pt'))
 model.load_state_dict(checkpoint['state_dict'])
@@ -83,6 +84,7 @@ elif set_name == 'test':
 
 # Load the attribution scores
 attr, y_pred, y_true, labels, features, _, _ = load_attributions(XAI_method, os.path.join(save_path, save_name, XAI_method), set_name=set_name)
+
 
 # Normalize them
 attr = transform_data(attr, transform='divide_by_norm')
@@ -136,12 +138,12 @@ for _type in types:
             print(f'    Average PGI', global_PG[_type][order])
 
 # ... random order
-PGRs = []
-for t in range(10):
-    indices = get_features_order(attr, _type="random")
-    PGR = prediction_gap_with_dataloader(model, loader, transform, gap, baseline, studied_class, indices, y_true, y_pred)
-    PGRs.append(np.round(np.mean(list(PGR.values())) * 100, 2))
-print('Average PGR', np.round(np.mean(PGRs), 2))
+# PGRs = []
+# for t in range(10):
+#     indices = get_features_order(attr, _type="random")
+#     PGR = prediction_gap_with_dataloader(model, loader, transform, gap, baseline, studied_class, indices, y_true, y_pred)
+#     PGRs.append(np.round(np.mean(list(PGR.values())) * 100, 2))
+# print('Average PGR', np.round(np.mean(PGRs), 2))
 
 
 # Save
@@ -153,5 +155,6 @@ with open(os.path.join(save_path, save_name, XAI_method, "figures", f"global_XAI
                 # f.write(f"{_type}, PGU_adjusted, {global_PG[_type][order + '_adjusted']}\n")
             else:
                 f.write(f"{_type}, PGI, {global_PG[_type][order]}\n")
-    f.write(f"PGR, {np.round(np.mean(PGRs), 2)}\n")
-    f.write(f"list_PGR, {PGRs}\n")
+    # f.write(f"PGR, {np.round(np.mean(PGRs), 2)}\n")
+    # f.write(f"list_PGR, {PGRs}\n")
+

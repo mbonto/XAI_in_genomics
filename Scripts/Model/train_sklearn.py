@@ -115,8 +115,13 @@ if selection is None and n_feat_selected is None :
             scores_L1 = np.mean(clf.coef_, axis=0)
         print("Shape -", scores_L1.shape, "Min coef -", np.round(np.min(scores_L1), 2), "Max coef -", np.round(np.max(scores_L1), 2), "Number of selected features -", np.sum(scores_L1 != 0))
         ## Features sorted by decreasing absolute values
-        order_L1 = np.argsort(-np.abs(scores_L1))
+        scores_L1 = np.abs(scores_L1)
+        order_L1 = np.argsort(-scores_L1)
         create_new_folder(os.path.join(save_path, "order"))
         feat_name = np.array(feat_name)
         np.save(os.path.join(save_path, "order", f"order_L1_exp_{exp}.npy"), feat_name[order_L1])
+        np.save(os.path.join(save_path, "order", f"order_L1_exp_{exp}_values.npy"), scores_L1[order_L1])
+
+
+
 

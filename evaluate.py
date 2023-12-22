@@ -4,8 +4,13 @@ from sklearn.metrics import ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 
 
-def count_correct_predictions(outputs, y):       
-    _, predicted = torch.max(outputs.data, 1)
+def count_correct_predictions(outputs, y): 
+    """Usage: before a sigmoid or a softmax function.
+    """
+    if len(outputs.data.shape) < 2:
+        predicted = (torch.sigmoid(outputs).data > 0.5) * 1
+    else:
+        _, predicted = torch.max(outputs.data, 1)
     correct = (predicted == y).sum().item()
     return correct
 
@@ -21,15 +26,17 @@ def compute_accuracy_from_predictions(y_pred, y_true):
     return np.round(np.mean(y_pred == y_true) * 100., 2)
 
 
-def compute_accuracy_from_model(model, X, y):
-    outputs = model(X)
-    _, pred = torch.max(outputs.data, 1)
-    return compute_accuracy_from_predictions(pred.detach().cpu().numpy(), y.detach().cpu().numpy().astype('int')[:, 0])
+# def compute_accuracy_from_model(model, X, y):
+#     outputs = model(X)
+#     _, pred = torch.max(outputs.data, 1)
+#     return compute_accuracy_from_predictions(pred.detach().cpu().numpy(), y.detach().cpu().numpy().astype('int')[:, 0])
 
 
 def compute_accuracy_from_model_with_dataloader(model, dataloader, transform, device):
     """Count the number of examples with a correct prediction and divide it by the number of examples.
+    Usage: after a sigmoid or a softmax function.
     """
+    n_class = model.variables["nb_classes"]
     acc = 0
     count = 0
     for x, target in dataloader:
@@ -37,7 +44,10 @@ def compute_accuracy_from_model_with_dataloader(model, dataloader, transform, de
         if transform:
             x = transform(x)
         target = target.to(device)
-        y = torch.argmax(model(x), 1)
+        if n_class == 2:
+            y = (model(x) > 0.5).reshape(-1) * 1
+        else:
+            y = torch.argmax(model(x), 1)
         acc += (torch.sum(y == target).detach().cpu().item())
         count += x.shape[0]
     return np.round(acc / count * 100, 2)

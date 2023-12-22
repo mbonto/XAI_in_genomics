@@ -6,6 +6,8 @@ sys.path.append(code_path)
 import numpy as np
 import random
 import torch
+from collections import OrderedDict
+from joblib import load
 import argparse
 from setting import *
 from utils import *
@@ -20,7 +22,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # Arguments
 argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="dataset name")
-argParser.add_argument("-m", "--model", type=str, help="model name (LR, MLP, DiffuseLR, DiffuseMLP)")
+argParser.add_argument("-m", "--model", type=str, help="model name (LR_L1_penalty)")
 argParser.add_argument("-s", "--step", type=int, help="number of steps", default=3000)
 argParser.add_argument("--set", type=str, help="set (train or test)")
 argParser.add_argument("--exp", type=int, help="experiment number", default=1)
@@ -60,10 +62,27 @@ elif set_name == 'test':
     
     
 # Model
+model = load(os.path.join(save_path, save_name, "checkpoint.joblib"))
+checkpoint = {}
+with open(os.path.join(save_path, save_name, "accuracy.csv"), "r") as f:
+    lines = f.readlines()
+    for line in lines:
+        line = line.strip().split(', ')
+        if line[0] == 'train':
+            checkpoint["train_acc"] = float(line[1])
+        elif line[0] == 'test':
+            checkpoint["test_acc"] = float(line[1])
+checkpoint['state_dict'] = OrderedDict()
+# print(torch.tensor(model.coef_).shape, torch.tensor(model.coef_).dtype)
+# print(torch.tensor(model.intercept_).shape, torch.tensor(model.intercept_).dtype)
+checkpoint['state_dict']['fc.weight'] = torch.tensor(model.coef_).to(device)
+checkpoint['state_dict']['fc.bias'] = torch.tensor(model.intercept_).to(device)
+
+
+# Convert the model to PyTorch
 softmax = True
-n_layer, n_hidden_feat, graph_name = get_hyperparameters(name, model_name)
-model = load_model(model_name, n_feat, n_class, softmax, device, save_path, n_layer, n_hidden_feat, graph_name)
-checkpoint = torch.load(os.path.join(save_path, save_name, 'checkpoint.pt'))
+n_layer, n_hidden_feat, graph_name = get_hyperparameters(name, "LR")
+model = load_model("LR", n_feat, n_class, softmax, device, save_path, n_layer, n_hidden_feat, graph_name)
 model.load_state_dict(checkpoint['state_dict'])
 model.eval()
 
@@ -71,6 +90,7 @@ model.eval()
 # Assert that the model and the data are coherent
 assert compute_accuracy_from_model_with_dataloader(model, train_loader, transform, device) == checkpoint['train_acc']
 assert compute_accuracy_from_model_with_dataloader(model, test_loader, transform, device) == checkpoint['test_acc']
+
 
 # Baseline
 base_class, studied_class = get_XAI_hyperparameters(name, n_class)

@@ -81,8 +81,9 @@ print("Shape -", scores_IG.shape, "Min coef -", np.round(np.min(scores_IG), 2), 
 ## Features sorted by decreasing values
 order_IG = np.argsort(-scores_IG)
 np.save(os.path.join(save_path, save_name, "order_{}_set_{}_exp_{}.npy".format(XAI_method, set_name, exp)), feat_name[order_IG])
-if XAI_method == "Integrated_Gradients" and set_name == "train" and exp == 1:
+if XAI_method == "Integrated_Gradients" and set_name == "train":
     create_new_folder(os.path.join(save_path, "order")) 
     np.save(os.path.join(save_path, "order", "order_IG_{}_set_{}_exp_{}.npy".format(model_name, set_name, exp)), feat_name[order_IG])
+    np.save(os.path.join(save_path, "order", "order_IG_{}_set_{}_exp_{}_values.npy".format(model_name, set_name, exp)), scores_IG[order_IG])
 
 
