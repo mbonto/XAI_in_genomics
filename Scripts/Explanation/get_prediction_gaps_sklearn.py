@@ -32,6 +32,7 @@ set_name = args.set
 gap = args.gap
 exp = args.exp
 print('Model    ', model_name)
+XAI_method = "Integrated_Gradients"
 
 
 # Path
@@ -89,17 +90,19 @@ ordered_feat_name = np.load(os.path.join(save_path, "order", f"order_IG_LR_L1_pe
 ordered_indices = np.array([np.argwhere(feat == feat_name)[0] for feat in ordered_feat_name]).reshape(-1)
 
 
-# Global prediction gaps where variables are ordered...
-# ... according to the absolute values of their scores
-global_PG = {}
-for order in ["increasing", "decreasing"]:
-    if order == "increasing":
-        indices = np.flip(ordered_indices).reshape(1, -1)
-    elif order == "decreasing":
-        indices = ordered_indices.reshape(1, -1)
-    PG = prediction_gap_with_dataset(clf, X, y, gap, baseline, studied_class, indices)
-    global_PG[order] = np.round(np.mean(list(PG.values())) * 100, 2)
-    print(f'    Average PGU', global_PG[order]) if order == "increasing" else print(f'    Average PGI', global_PG[order])
+# Global prediction gaps
+# ... on unimportant features
+indices = np.flip(ordered_indices.copy()).reshape(1, -1)
+PGU = prediction_gap_with_dataset(clf, X, y, gap, baseline, studied_class, indices)
+PGU = np.round(np.mean(list(PGU.values())) * 100, 2)
+print(f'    Average PGU', PGU)
+
+# ... on important features
+indices = ordered_indices.copy().reshape(1, -1)
+PGI = prediction_gap_with_dataset(clf, X, y, gap, baseline, studied_class, indices)
+PGI = np.round(np.mean(list(PGI.values())) * 100, 2)
+print(f'    Average PGI', PGI)
+
 
 # ... randomly
 # PGRs = []
@@ -113,13 +116,10 @@ for order in ["increasing", "decreasing"]:
 
 
 # Save
-create_new_folder(os.path.join(save_path, save_name, "figures"))
-with open(os.path.join(save_path, save_name, "figures", f"global_XAI_{set_name}.csv"), "w") as f:
-    for order in ["increasing", "decreasing"]:
-        if order == "increasing":
-            f.write(f"PGU, {global_PG[order]}\n")
-        else:
-            f.write(f"PGI, {global_PG[order]}\n")
+create_new_folder(os.path.join(save_path, save_name, XAI_method, "figures"))
+with open(os.path.join(save_path, save_name, XAI_method, "figures", f"global_XAI_{set_name}.csv"), "w") as f:
+    f.write(f"PGU, {PGU}\n")
+    f.write(f"PGI, {PGI}\n")
     # f.write(f"PGR, {np.round(np.mean(PGRs), 2)}\n")
     # f.write(f"list_PGR, {PGRs}\n")
 

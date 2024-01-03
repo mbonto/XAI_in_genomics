@@ -4,6 +4,7 @@ from matplotlib.ticker import FormatStrFormatter
 from matplotlib.patches import Rectangle
 import numpy as np
 import seaborn as sns
+from scipy.stats import rankdata
     
 
 def plot_TCGA_results(results, xlabel, ylabel, save_name=None, show=True, stats=False):
@@ -66,7 +67,7 @@ def plot_TCGA_results(results, xlabel, ylabel, save_name=None, show=True, stats=
     plt.close('all')
 
 
-def plot_gene_ranked_by_a_model(set_name_1, set_name_2, n_repet, feat_name, save_path, save_name=None):
+def plot_gene_ranked_by_a_model(set_name_1, set_name_2, n_repet, feat_name, save_path, method="hist", binwidth=200, save_name=None):
     """Plot the distribution of the ranks of the features ordered by two models. For each model, `n_repet` rankings exist. 
 
     Parameters:
@@ -75,6 +76,8 @@ def plot_gene_ranked_by_a_model(set_name_1, set_name_2, n_repet, feat_name, save
         n_repet  --  Number of rankings for each model. Stored in set_name_1 + "_exp_1", ..., set_name_1 + "_exp_{n_repet}".
         feat_name  -- List containing feature names.
         save_path  --  Path where the results are stored.
+        method  --  "hist" or "kde".
+        binwidth  --  Int. Width of the bins used by "hist".
         save_name  --  If not None, the plot is saved in a file called save_name.
     """
     n_feat = len(feat_name)
@@ -82,15 +85,24 @@ def plot_gene_ranked_by_a_model(set_name_1, set_name_2, n_repet, feat_name, save
     for exp_1 in range(1, n_repet+1):
         for exp_2 in range(1, n_repet+1):
             if exp_1 < exp_2:
-                # List of ranked genes
-                gene_list_1 = np.load(os.path.join(save_path, "order", set_name_1 + f"_exp_{exp_1}.npy"), allow_pickle=True)
-                gene_list_2 = np.load(os.path.join(save_path, "order", set_name_2 + f"_exp_{exp_2}.npy"), allow_pickle=True)
-                # Ranks
-                gene_rank_1 = [np.argwhere(feat_name[k] == gene_list_1)[0, 0] for k in range(n_feat)]
-                gene_rank_2 = [np.argwhere(feat_name[k] == gene_list_2)[0, 0] for k in range(n_feat)]
+                # Load feature names ranked by order of importance
+                list_1 = np.load(os.path.join(save_path, "order", set_name_1 + f"_exp_{exp_1}.npy"), allow_pickle=True)
+                list_2 = np.load(os.path.join(save_path, "order", set_name_2 + f"_exp_{exp_2}.npy"), allow_pickle=True)
+                # Load feature importance values
+                value_1 = np.load(os.path.join(save_path, "order", set_name_1 + f"_exp_{exp_1}_values.npy"), allow_pickle=True)
+                value_2 = np.load(os.path.join(save_path, "order", set_name_2 + f"_exp_{exp_2}_values.npy"), allow_pickle=True)
+                # Attribute to each feature a value
+                value_1 = np.array([value_1[np.argwhere(feat_name[k] == list_1)[0, 0]] for k in range(n_feat)])
+                value_2 = np.array([value_2[np.argwhere(feat_name[k] == list_2)[0, 0]] for k in range(n_feat)])
+                # Attribute to each gene a rank
+                rank_1 = rankdata(-value_1, method='max')
+                rank_2 = rankdata(-value_2, method='max')
                 # Plot
                 plt.subplot(n_repet - 1, n_repet, exp_2 + (exp_1 - 1) * n_repet)
-                sns.kdeplot(x=gene_rank_1, y=gene_rank_2, fill=True)
+                if method == "hist":
+                    sns.histplot(x=rank_2, y=rank_1, binrange=[0, (n_feat // binwidth + 1) * binwidth ], vmin=0, bins=(n_feat // binwidth + 1))
+                elif method == "kde":
+                    sns.kdeplot(x=rank_2, y=rank_1, fill=True)
                 if (exp_2 + (exp_1 - 1) * n_repet - 1) % n_repet != exp_1:
                     plt.axis('off')
                 if exp_1 == 1:
@@ -99,11 +111,11 @@ def plot_gene_ranked_by_a_model(set_name_1, set_name_2, n_repet, feat_name, save
                     plt.ylabel(exp_1)
     # Save         
     if save_name is not None:
-        plt.savefig(os.path.join(save_path, "figures", save_name), bbox_inches='tight')
+        plt.savefig(os.path.join(save_path, "figures", save_name + f"_{method}"), bbox_inches='tight')
     plt.show()
 
 
-def plot_genes_ranked_by_methods(set_names, methods, feat_name, save_path, save_name):
+def plot_genes_ranked_by_methods(set_names, methods, feat_name, save_path, method="hist", binwidth=200, save_name=None):
     """Plot the distribution of the ranks of the features ordered by several methods.
 
     Parameters:
@@ -111,6 +123,8 @@ def plot_genes_ranked_by_methods(set_names, methods, feat_name, save_path, save_
         methods  --  List of methods used to rank features.
         feat_name  -- List containing feature names.
         save_path  --  Path where the results are stored.
+        method  --  "hist" or "kde".
+        binwidth  --  Int. Width of the bins used by "hist".
         save_name  --  If not None, the plot is saved in a file called save_name.
     """
     n_feat = len(feat_name)
@@ -119,15 +133,24 @@ def plot_genes_ranked_by_methods(set_names, methods, feat_name, save_path, save_
     for i, set_name_1 in enumerate(set_names):
         for j, set_name_2 in enumerate(set_names):
             if i < j:
-                # List of ranked genes
-                gene_list_1 = np.load(os.path.join(save_path, "order", set_name_1 + ".npy"), allow_pickle=True)
-                gene_list_2 = np.load(os.path.join(save_path, "order", set_name_2 + ".npy"), allow_pickle=True)
-                # Ranks
-                gene_rank_1 = [np.argwhere(feat_name[k] == gene_list_1)[0, 0] for k in range(n_feat)]
-                gene_rank_2 = [np.argwhere(feat_name[k] == gene_list_2)[0, 0] for k in range(n_feat)]
+                # Load feature names ranked by order of importance
+                list_1 = np.load(os.path.join(save_path, "order", set_name_1 + ".npy"), allow_pickle=True)
+                list_2 = np.load(os.path.join(save_path, "order", set_name_2 + ".npy"), allow_pickle=True)
+                # Load feature importance values
+                value_1 = np.load(os.path.join(save_path, "order", set_name_1 + f"_values.npy"), allow_pickle=True)
+                value_2 = np.load(os.path.join(save_path, "order", set_name_2 + f"_values.npy"), allow_pickle=True)
+                # Attribute to each feature a value
+                value_1 = np.array([value_1[np.argwhere(feat_name[k] == list_1)[0, 0]] for k in range(n_feat)])
+                value_2 = np.array([value_2[np.argwhere(feat_name[k] == list_2)[0, 0]] for k in range(n_feat)])
+                # Attribute to each gene a rank
+                rank_1 = rankdata(-value_1, method='max')
+                rank_2 = rankdata(-value_2, method='max')
                 # Plot
                 plt.subplot(n_set, n_set, j + 1 + i * n_set)
-                sns.kdeplot(x=gene_rank_1, y=gene_rank_2, fill=True)
+                if method == "hist":
+                    sns.histplot(x=rank_2, y=rank_1, binrange=[0, (n_feat // binwidth + 1) * binwidth ], vmin=0, bins=(n_feat // binwidth + 1))
+                elif method == "kde":
+                    sns.kdeplot(x=rank_2, y=rank_1, fill=True)
                 if (j + i * n_set) % n_set != (i + 1):
                     plt.axis('off')
                 if i == 0:

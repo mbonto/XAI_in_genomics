@@ -26,7 +26,7 @@ data_path = get_data_path(name)
 
 # Variables
 model_names = {"LR+L1": "LR_L1_penalty", "LR+L2": "LR", "MLP": "MLP", "GCN": "GCN"}
-XAI_methods = {"LR+L1": "", "LR+L2": "Integrated_Gradients", "MLP": "Integrated_Gradients", "GCN": "Integrated_Gradients"}
+XAI_methods = {"LR+L1": "Integrated_Gradients", "LR+L2": "Integrated_Gradients", "MLP": "Integrated_Gradients", "GCN": "Integrated_Gradients"}
 exps = np.arange(1, n_repet+1)
 
 
@@ -80,18 +80,11 @@ for model in models:
             lines = f.readlines()
             for line in lines:
                 line = line.strip().split(', ')
-                if model == "LR+L1":
-                    if line[0] == 'PGU':
-                        PGU.append(float(line[1]))
-                    elif line[0] == 'PGI':
-                        PGI.append(float(line[1]))
-                else:
-                    if line[0] == 'sum':
-                        if line[1] == 'PGU':
-                            PGU.append(float(line[2]))
-                        elif line[1] == 'PGI':
-                            PGI.append(float(line[2]))
-                # if line[0] == 'PGR':
+                if line[0] == 'PGU':
+                    PGU.append(float(line[1]))
+                elif line[0] == 'PGI':
+                    PGI.append(float(line[1]))
+                # elif line[0] == 'PGR':
                 #    PGR.append(float(line[1]))
     assert len(PGU) == len(exps)
     assert len(PGI) == len(exps)

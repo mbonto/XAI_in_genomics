@@ -17,7 +17,7 @@ def get_attributions_per_class(attr, labels, _class, method=None, value=None):
     Return the normalized attributions associated with the examples associated with the label _class.
     """
     indices = np.argwhere(labels == _class)[:, 0]
-    attr_cls = attr[indices]
+    attr_cls = np.abs(attr[indices])
     return normalize_attribution_scores(attr_cls, method, value)
 
 

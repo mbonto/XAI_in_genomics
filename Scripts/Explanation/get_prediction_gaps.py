@@ -83,7 +83,8 @@ elif set_name == 'test':
     
 
 # Load the attribution scores
-attr, y_pred, y_true, labels, features, _, _ = load_attributions(XAI_method, os.path.join(save_path, save_name, XAI_method), set_name=set_name)
+attr, y_pred, y_true, class_name, feat_name, _, _ = load_attributions(XAI_method, os.path.join(save_path, save_name, XAI_method), set_name=set_name)
+feat_name = np.array(feat_name)
 
 
 # Normalize them
@@ -94,48 +95,45 @@ attr = transform_data(attr, transform='divide_by_norm')
 print("Local PGs")
 
 # ... on unimportant features
-indices = np.argsort(attr, axis=1)
+indices = np.argsort(np.abs(attr), axis=1)
 PGU = prediction_gap_with_dataloader(model, loader, transform, gap, baseline, studied_class, indices, y_true, y_pred)
-print('    Average PGU', np.round(np.mean(list(PGU.values())) * 100, 2))
+PGU = np.round(np.mean(list(PGU.values())) * 100, 2)
+print('    Average PGU', PGU)
 # adj_PGU = {}
 # for c in studied_class:
 #     adj_PGU[c] = PGU[c] / (1 - default_output[0, c])
 # print('    Adjusted', np.round(np.mean(list(adj_PGU.values())) * 100, 2))
 
 # ... on important features
-indices = np.argsort(-attr, axis=1)
+indices = np.argsort(-np.abs(attr), axis=1)
 PGI = prediction_gap_with_dataloader(model, loader, transform, gap, baseline, studied_class, indices, y_true, y_pred)
-print('    Average PGI', np.round(np.mean(list(PGI.values())) * 100, 2))
+PGI = np.round(np.mean(list(PGI.values())) * 100, 2)
+print('    Average PGI', PGI)
 
 # Save
 with open(os.path.join(save_path, save_name, XAI_method, "figures", f"local_XAI_{set_name}.csv"), "w") as f:
-    f.write(f"PGU, {np.round(np.mean(list(PGU.values())) * 100, 2)}\n")
+    f.write(f"PGU, {PGU}\n")
     # f.write(f"PGU_adjusted, {np.round(np.mean(list(adj_PGU.values()))* 100, 2)}\n")
-    f.write(f"PGI, {np.round(np.mean(list(PGI.values())) * 100, 2)}\n")
+    f.write(f"PGI, {PGI}\n")
     
     
 # Global prediction gaps ...
 print('\nGlobal PGs')
+ordered_feat_name = np.load(os.path.join(save_path, "order", f"order_IG_{model_name}_set_train_exp_{exp}.npy"), allow_pickle=True)
+ordered_indices = np.array([np.argwhere(feat == feat_name)[0] for feat in ordered_feat_name]).reshape(-1)
 
-# ... where variables are ordered by summing the attributions of all examples, by summing their ranks or by using median ranks 
-types = ["sum",]  # ["sum", "rank", "rank-median"]
-global_PG = {}
-for _type in types:
-    global_PG[_type] = {}
-    # print(_type)
-    for order in ["increasing", "decreasing"]:
-        indices = get_features_order(attr, _type + "_" + order)
-        PG = prediction_gap_with_dataloader(model, loader, transform, gap, baseline, studied_class, indices, y_true, y_pred)
-        global_PG[_type][order] = np.round(np.mean(list(PG.values())) * 100, 2)
-        if order == "increasing":
-            print(f'    Average PGU', global_PG[_type][order])
-            # adj_PG = {}
-            # for c in studied_class:
-            #     adj_PG[c] = PG[c] / (1 - default_output[0, c])
-            # global_PG[_type][order + "_adjusted"] = np.round(np.mean(list(adj_PG.values())) * 100, 2)
-            # print('        Adjusted', global_PG[_type][order + "_adjusted"])
-        else:
-            print(f'    Average PGI', global_PG[_type][order])
+# ... on unimportant features
+indices = np.flip(ordered_indices.copy()).reshape(1, -1)
+global_PGU = prediction_gap_with_dataloader(model, loader, transform, gap, baseline, studied_class, indices, y_true, y_pred)
+global_PGU = np.round(np.mean(list(global_PGU.values())) * 100, 2)
+print(f'    Average PGU', global_PGU)
+
+# ... on important features
+indices = ordered_indices.copy().reshape(1, -1)
+global_PGI = prediction_gap_with_dataloader(model, loader, transform, gap, baseline, studied_class, indices, y_true, y_pred)
+global_PGI = np.round(np.mean(list(global_PGI.values())) * 100, 2)
+print(f'    Average PGI', global_PGI)
+
 
 # ... random order
 # PGRs = []
@@ -148,13 +146,8 @@ for _type in types:
 
 # Save
 with open(os.path.join(save_path, save_name, XAI_method, "figures", f"global_XAI_{set_name}.csv"), "w") as f:
-    for _type in global_PG.keys():
-        for order in ["increasing", "decreasing"]:
-            if order == "increasing":
-                f.write(f"{_type}, PGU, {global_PG[_type][order]}\n")
-                # f.write(f"{_type}, PGU_adjusted, {global_PG[_type][order + '_adjusted']}\n")
-            else:
-                f.write(f"{_type}, PGI, {global_PG[_type][order]}\n")
+    f.write(f"PGU, {global_PGU}\n")
+    f.write(f"PGI, {global_PGI}\n")
     # f.write(f"PGR, {np.round(np.mean(PGRs), 2)}\n")
     # f.write(f"list_PGR, {PGRs}\n")
 

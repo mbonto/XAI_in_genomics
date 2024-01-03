@@ -63,4 +63,16 @@ with open(os.path.join(save_path, "GSEA", set_name[model_name] + ".txt"), "w") a
             f.write(f"{gene} - {gene_values[g]}\n")
 
 
+with open(os.path.join(save_path, "GSEA", set_name[model_name] + "_wo_values.txt"), "w") as f:
+    for g, gene in enumerate(gene_list):
+        if name == "pancan":
+            f.write(f"{gene.split('|')[0]}\n")
+        elif name == "BRCA":
+            f.write(f"{convert_name[gene]}\n")
+        else:
+            f.write(f"{gene}\n")
+
+
+
+
 
