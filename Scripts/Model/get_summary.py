@@ -10,7 +10,7 @@ from setting import *
 # Arguments
 argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="Dataset name")
-argParser.add_argument("-m", "--model", type=str, help="Model name (LR, MLP, GCN, LR_L1_penalty)")
+argParser.add_argument("-m", "--model", type=str, help="Model name (LR, MLP, GCN, LR_L1_penalty, LR_L2_penalty)")
 argParser.add_argument("--n_repet", type=int, help="Results are averaged for all experiments between 1 and `n_repet`")
 args = argParser.parse_args()
 name = args.name

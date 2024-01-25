@@ -25,9 +25,9 @@ set_pyplot()
 # Arguments
 argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="dataset name")
-argParser.add_argument("-m", "--model", type=str, help="model name (LR_L1_penalty, KNN)")
+argParser.add_argument("-m", "--model", type=str, help="model name (LR_L1_penalty, KNN, LR_L2_penalty)")
 argParser.add_argument("--exp", type=int, help="experiment number", default=1)
-argParser.add_argument("--selection", type=str, help="method used to select features (var, PCA_PC1, F, MI, L1_exp_1, DESeq2, IG_LR_set_train_exp_1, IG_MLP_set_train_exp_1, IG_GCN_set_train_exp_1)")
+argParser.add_argument("--selection", type=str, help="method used to select features (ex: MI, DESeq2, IG_LR_L1_penalty_set_train_exp_1, IG_MLP_set_train_exp_1)")
 argParser.add_argument("--n_feat_selected", type=int, help="number of features selected.")
 argParser.add_argument("--selection_type", type=str, choices=["best", "worst", "random_wo_best"], help="when `selection` is given, keep best, worst or random without best features.")
 args = argParser.parse_args()
@@ -65,6 +65,9 @@ if selection is None and n_feat_selected is None:
 if model_name == "LR_L1_penalty":
     C = get_hyperparameters(name, model_name)
     clf = LogisticRegression(penalty='l1', C=C, max_iter=1000, solver='saga', random_state=seed)
+elif model_name == "LR_L2_penalty":
+    C = get_hyperparameters(name, model_name)
+    clf = LogisticRegression(penalty='l2', C=C, max_iter=1000, solver='saga', random_state=seed)
 elif model_name == "KNN":
     K = 3
     clf = KNeighborsClassifier(n_neighbors=K)

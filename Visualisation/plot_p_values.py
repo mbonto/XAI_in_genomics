@@ -15,8 +15,10 @@ set_pyplot()
 # Arguments
 argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="dataset name")
+argParser.add_argument("-m", "--method", type=str, help="method name")
 args = argParser.parse_args()
 name = args.name
+method = args.method
 
 
 # Path
@@ -25,17 +27,18 @@ data_path = get_data_path(name)
 
 
 # Load data
-values_DE = np.load(os.path.join(save_path, "order", "order_DESeq2_values.npy"), allow_pickle=True)
-values_DE = np.exp(- values_DE * np.log(10))
-print("Minimal p-value: ", np.min(values_DE), "Maximal p-value: ", np.max(values_DE))
+values = np.load(os.path.join(save_path, "order", f"order_{method}_values.npy"), allow_pickle=True)
+values = np.exp(- values * np.log(10))
+print("Minimal adjusted p-value: ", np.min(values), "Maximal adjusted p-value: ", np.max(values), "# < 0.05: ", np.sum(values < 0.05))
 
 
 # Plot
-save_name = os.path.join("figures", f"p_values_DESeq2_{name}.png")
+save_name = os.path.join("figures", f"adjusted_p_values_{method}_{name}.png")
 plt.figure(figsize=(7, 2))
-sns.displot(data=values_DE, kind="hist", color="blueviolet", binwidth=0.01, binrange=[0, 1])
+sns.displot(data=values, kind="hist", color="blueviolet", binwidth=0.01, binrange=[0, 1])
 plt.xlabel("Adjusted p-values")
 plt.ylabel("Count")
+plt.yscale("log")
 plt.savefig(save_name, bbox_inches='tight', dpi=150)
 # plt.show()
 

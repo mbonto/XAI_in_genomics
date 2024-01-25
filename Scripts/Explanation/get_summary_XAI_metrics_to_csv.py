@@ -25,7 +25,7 @@ data_path = get_data_path(name)
 
 
 # Variables
-model_names = {"LR+L1": "LR_L1_penalty", "LR+L2": "LR", "MLP": "MLP", "GCN": "GCN"}
+model_names = {"LR+L1": "LR_L1_penalty", "LR+L2": "LR_L2_penalty", "MLP": "MLP", "GCN": "GCN"}
 XAI_methods = {"LR+L1": "Integrated_Gradients", "LR+L2": "Integrated_Gradients", "MLP": "Integrated_Gradients", "GCN": "Integrated_Gradients"}
 exps = np.arange(1, n_repet+1)
 
@@ -38,7 +38,7 @@ PGU_global = {}
 # PGR_both = {}
 
 # Summarize local PGs for each model
-models = ["LR+L2", "MLP", "GCN"]
+models = ["MLP", "GCN"]
 for model in models:
     PGI_local[model] = {}
     PGU_local[model] = {}
@@ -99,22 +99,16 @@ for model in models:
 
 
 # Save
-models = ["LR+L1", "LR+L2", "MLP", "GCN"]
+models = ["MLP", "GCN"]
 with open(os.path.join(save_path, "figures", f"PGI_local_{set_name}.csv"), "w") as f:
     f.write("Index, Model, Value, Std\n")
     for i, model in enumerate(models):
-        if model == "LR+L1":
-            f.write(f"{i+1}, {model}, {PGI_global[model]['mean']}, {PGI_global[model]['std']}\n")
-        else:
-            f.write(f"{i+1}, {model}, {PGI_local[model]['mean']}, {PGI_local[model]['std']}\n")
+        f.write(f"{i+1}, {model}, {PGI_local[model]['mean']}, {PGI_local[model]['std']}\n")
 
 with open(os.path.join(save_path, "figures", f"PGU_local_{set_name}.csv"), "w") as f:
     f.write("Index, Model, Value, Std\n")
     for i, model in enumerate(models):
-        if model == "LR+L1":
-            f.write(f"{i+1}, {model}, {PGU_global[model]['mean']}, {PGU_global[model]['std']}\n")
-        else:
-            f.write(f"{i+1}, {model}, {PGU_local[model]['mean']}, {PGU_local[model]['std']}\n")
+        f.write(f"{i+1}, {model}, {PGU_local[model]['mean']}, {PGU_local[model]['std']}\n")
 
 models = ["LR+L1","LR+L2", "MLP", "GCN"]
 with open(os.path.join(save_path, "figures", f"PGI_global_{set_name}.csv"), "w") as f:

@@ -22,7 +22,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # Arguments
 argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="dataset name")
-argParser.add_argument("-m", "--model", type=str, help="model name (LR_L1_penalty)")
+argParser.add_argument("-m", "--model", type=str, help="model name (LR_L1_penalty, LR_L2_penalty)")
 argParser.add_argument("-s", "--step", type=int, help="number of steps", default=3000)
 argParser.add_argument("--set", type=str, help="set (train or test)")
 argParser.add_argument("--exp", type=int, help="experiment number", default=1)

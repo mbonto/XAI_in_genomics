@@ -38,7 +38,9 @@ order_PCA = {1: np.load(os.path.join(save_path, "order", "order_PCA_PC1.npy"))}
 order_MI = {1: np.load(os.path.join(save_path, "order", "order_MI.npy"))}
 # order_limma = np.load(os.path.join(save_path, "order", "order_limma.npy"), allow_pickle=True)
 order_DE = {1: np.load(os.path.join(save_path, "order", "order_DESeq2.npy"), allow_pickle=True)} 
+order_R = {1: np.load(os.path.join(save_path, "order", "order_edgeR.npy"), allow_pickle=True)} 
 order_weight_L1 = {}
+order_weight_L2 = {}
 order_weight_LR = {}
 if name in ['temp',]:  # 'ttg-breast', 'BRCA', 'ttg-all']:
     order_effect_L1 = {}
@@ -49,8 +51,10 @@ order_IG_MLP = {}
 order_IG_LR = {}
 order_IG_GCN = {}
 order_IG_L1 = {}
+order_IG_L2 = {}
 for exp in range(1, n_repet+1):
     order_weight_L1[exp] = np.load(os.path.join(save_path, "order", f"order_weight_LR_L1_penalty_exp_{exp}.npy"))
+    order_weight_L2[exp] = np.load(os.path.join(save_path, "order", f"order_weight_LR_L2_penalty_exp_{exp}.npy"))
     order_weight_LR[exp] = np.load(os.path.join(save_path, "order", f"order_weight_LR_exp_{exp}.npy"))
     if name in ['temp',]:  # 'ttg-breast', 'BRCA', 'ttg-all']:
         order_effect_L1[exp] = np.load(os.path.join(save_path, "order", f"order_effect_LR_L1_penalty_exp_{exp}.npy"))
@@ -61,6 +65,7 @@ for exp in range(1, n_repet+1):
     order_IG_LR[exp] = np.load(os.path.join(save_path, "order", f"order_IG_LR_set_train_exp_{exp}.npy"), allow_pickle=True) 
     order_IG_GCN[exp] = np.load(os.path.join(save_path, "order", f"order_IG_GCN_set_train_exp_{exp}.npy"), allow_pickle=True) 
     order_IG_L1[exp] = np.load(os.path.join(save_path, "order", f"order_IG_LR_L1_penalty_set_train_exp_{exp}.npy"))
+    order_IG_L2[exp] = np.load(os.path.join(save_path, "order", f"order_IG_LR_L2_penalty_set_train_exp_{exp}.npy"))
 
 
 assert len(order_VAR[1]) == n_feat
@@ -69,8 +74,10 @@ assert len(order_PCA[1]) == n_feat
 assert len(order_MI[1]) == n_feat
 # assert len(order_limma) == n_feat
 assert len(order_DE[1]) == n_feat
+assert len(order_R[1]) == n_feat
 for exp in range(1, n_repet+1):
     assert len(order_weight_L1[exp]) == n_feat
+    assert len(order_weight_L2[exp]) == n_feat
     assert len(order_weight_LR[exp]) == n_feat
     if name in ['temp',]:  # 'ttg-breast', 'BRCA', 'ttg-all']:
         assert len(order_effect_L1[exp]) == n_feat
@@ -81,6 +88,7 @@ for exp in range(1, n_repet+1):
     assert len(order_IG_LR[exp]) == n_feat
     assert len(order_IG_GCN[exp]) == n_feat
     assert len(order_IG_L1[exp]) == n_feat
+    assert len(order_IG_L2[exp]) == n_feat
 
 
 ###############################################################################################################
@@ -189,7 +197,8 @@ for n in n_args:
             'VAR': {},
             'PCA': {},
             'MI': {},
-            'DE': {},
+            'DESeq2': {},
+            'EdgeR': {},
             'LR+L1 (weight)': {},
             'LR+L2 (weight)':{},
             'LR+L1 (IG)': {},
@@ -205,12 +214,13 @@ for n in n_args:
     data['VAR'][1] = list(order_VAR[1][:n])
     data['PCA'][1] = list(order_PCA[1][:n])
     data['MI'][1] = list(order_MI[1][:n])
-    data['DE'][1] =  list(order_DE[1][:n])
+    data['DESeq2'][1] =  list(order_DE[1][:n])
+    data['EdgeR'][1] =  list(order_R[1][:n])
     for exp in range(1, n_repet+1):
         data['LR+L1 (weight)'][exp] = list(order_weight_L1[exp][:n])
-        data['LR+L2 (weight)'][exp] = list(order_weight_LR[exp][:n])
+        data['LR+L2 (weight)'][exp] = list(order_weight_L2[exp][:n])
         data['LR+L1 (IG)'][exp] = list(order_IG_L1[exp][:n])
-        data['LR+L2 (IG)'][exp] = list(order_IG_LR[exp][:n])
+        data['LR+L2 (IG)'][exp] = list(order_IG_L2[exp][:n])
         data['MLP'][exp] = list(order_IG_MLP[exp][:n])
         data['GNN'][exp] = list(order_IG_GCN[exp][:n])
         if name in ['temp',]: #  'BRCA', 'ttg-all', 'ttg-breast']:
@@ -242,11 +252,11 @@ for n in n_args:
     # x = [(k1, k2, len(set(d1) & set(d2))) for k1,d1 in data.items() for k2,d2 in data.items()]
     df = pd.DataFrame(x).pivot(index=0, columns=1, values=2)
     if name in ['temp', ]:  # 'BRCA', 'ttg-all', 'ttg-breast']:
-        df = df[['VAR', 'PCA', 'MI', 'DE', 'LR+L1 (weight)', 'LR+L1 (effect)', 'LR+L1 (effect-b)', 'LR+L1 (IG)', 'LR+L2 (weight)', 'LR+L2 (effect)', 'LR+L2 (effect-b)', 'LR+L2 (IG)', 'MLP', 'GNN']]
-        df = df.reindex(['VAR', 'PCA', 'MI', 'DE', 'LR+L1 (weight)', 'LR+L1 (effect)', 'LR+L1 (effect-b)', 'LR+L1 (IG)', 'LR+L2 (weight)', 'LR+L2 (effect)', 'LR+L2 (effect-b)', 'LR+L2 (IG)', 'MLP', 'GNN'])
+        df = df[['VAR', 'PCA', 'MI', 'EdgeR', 'DESeq2', 'LR+L1 (weight)', 'LR+L1 (effect)', 'LR+L1 (effect-b)', 'LR+L1 (IG)', 'LR+L2 (weight)', 'LR+L2 (effect)', 'LR+L2 (effect-b)', 'LR+L2 (IG)', 'MLP', 'GNN']]
+        df = df.reindex(['VAR', 'PCA', 'MI', 'EdgeR', 'DESeq2', 'LR+L1 (weight)', 'LR+L1 (effect)', 'LR+L1 (effect-b)', 'LR+L1 (IG)', 'LR+L2 (weight)', 'LR+L2 (effect)', 'LR+L2 (effect-b)', 'LR+L2 (IG)', 'MLP', 'GNN'])
     else:
-        df = df[['VAR', 'PCA', 'MI', 'DE', 'LR+L1 (weight)', 'LR+L1 (IG)', 'LR+L2 (weight)', 'LR+L2 (IG)', 'MLP', 'GNN']]
-        df = df.reindex(['VAR', 'PCA', 'MI', 'DE', 'LR+L1 (weight)', 'LR+L1 (IG)', 'LR+L2 (weight)', 'LR+L2 (IG)', 'MLP', 'GNN'])
+        df = df[['VAR', 'PCA', 'MI', 'EdgeR', 'DESeq2', 'LR+L1 (weight)', 'LR+L1 (IG)', 'LR+L2 (weight)', 'LR+L2 (IG)', 'MLP', 'GNN']]
+        df = df.reindex(['VAR', 'PCA', 'MI', 'EdgeR', 'DESeq2', 'LR+L1 (weight)', 'LR+L1 (IG)', 'LR+L2 (weight)', 'LR+L2 (IG)', 'MLP', 'GNN'])
     if n == 10:
         df_10 = (df.copy() * 10).round().astype(int)
         matrix_triu = np.triu(np.ones(np.shape(df_10)))
@@ -266,11 +276,15 @@ for n in n_args:
 
 # Heatmap 10 vs 100 features
 plt.figure(figsize=(20, 20))
-sns.heatmap(df_10, mask=matrix_triu, vmin=0, vmax=100, cbar=False, annot=True, cmap="BuPu", annot_kws={"fontsize":30}, fmt='d')
-h = sns.heatmap(df_100, mask=matrix_tril, vmin=0, vmax=100, annot=True, cmap="BuPu", annot_kws={"fontsize":30}, cbar_kws={"ticks":[0, 100]}, fmt='d')
+sns.heatmap(df_10, mask=matrix_triu, vmin=0, vmax=100, cbar=False, annot=True, cmap="BuPu", annot_kws={"fontsize":30}, fmt='d', square=True)
+h = sns.heatmap(df_100, mask=matrix_tril, vmin=0, vmax=100, annot=True, cmap="BuPu", annot_kws={"fontsize":30}, cbar_kws={"ticks":[0, 100], "shrink": .81}, fmt='d', square=True)
+# h.tick_params(bottom=False, labelbottom=False)  # to remove bottom ticks and tick labels
+# h.tick_params(left=False, labelleft=False)  # to remove bottom ticks and tick labels
 # Labels
 plt.xlabel('Upper triangular: comparison among 100 features', loc='right', labelpad=50, fontsize=30)
+# plt.xlabel('', loc='right', labelpad=50, fontsize=30)
 plt.ylabel('Lower triangular: comparison among 10 features', loc='bottom', labelpad=50, fontsize=30)
+# plt.ylabel('', loc='bottom', labelpad=50, fontsize=30)
 ax = plt.gca()
 ax.xaxis.set_label_position('top')
 # Ticks

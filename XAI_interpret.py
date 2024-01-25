@@ -734,4 +734,3 @@ def prediction_gap_with_dataset(model, X, y, gap, baseline, studied_class, indic
     return PG
 
 
-

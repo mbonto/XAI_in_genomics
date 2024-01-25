@@ -51,6 +51,40 @@ robjects.r('''limma <- function(rawcount_dataframe, design_dataframe, filter_gen
 ''')
 
 
+robjects.r('''edgeR <- function(rawcount_dataframe, g1, g2) {
+    # Parameters
+    #     rawcount_dataframe -- R dataframe containing raw counts. Shape (n_gene, n_sample).
+    #     g1 -- vector containing the names of the samples belonging to the "Control" group.
+    #     g2 -- vector containing the names of the samples belonging to the "Condition" group.
+    
+    # Load packages
+    suppressMessages(require(limma))
+    suppressMessages(require(edgeR))
+
+    # Prepare data
+    colData <- as.data.frame(c(rep(c("Control"),length(g1)),rep(c("Condition"),length(g2))))
+    rownames(colData) <- c(g1,g2)
+    colnames(colData) <- c("group")
+    colData$group = relevel(as.factor(colData$group), "Control")
+    
+    rawcount_dataframe <- rawcount_dataframe[, rownames(colData)]  # the order of rawcount_dataframe columns must be the same as the rows of colData.
+
+    # Method
+    y <- DGEList(counts=round(rawcount_dataframe), group=colData$group)
+    y <- calcNormFactors(y)
+    y <- estimateCommonDisp(y)
+    y <- estimateTagwiseDisp(y)
+    et <- exactTest(y)
+    res <- topTags(et, n=Inf)
+    # Return
+    res <- as.data.frame(res)
+    results <- list("edgeR_dataframe"= res, "rownames"=rownames(res), "colnames"=colnames(res))
+    
+    return (results)
+}
+''')
+
+
 robjects.r('''deseq2 <- function(rawcount_dataframe, g1, g2) {
     # Parameters
     #     rawcount_dataframe -- R dataframe containing raw counts. Shape (n_gene, n_sample).
@@ -70,7 +104,7 @@ robjects.r('''deseq2 <- function(rawcount_dataframe, g1, g2) {
     rawcount_dataframe <- rawcount_dataframe[, rownames(colData)]  # the order of rawcount_dataframe columns must be the same as the rows of colData.
     
     # Method
-    dds <- DESeqDataSetFromMatrix(countData = round(rawcount_dataframe), colData = colData, design=~(group))  # rawcount_dataframe must contain integer values
+    dds <- DESeqDataSetFromMatrix(countData = round(rawcount_dataframe), colData = colData, design = ~ group)  # rawcount_dataframe must contain integer values
     dds <- DESeq(dds)  
     res <- results(dds)  # log2 fold change (MLE): condition a vs b: log2(a/b).
     res[which(is.na(res$padj)),] <- 1  # padj: adjusted p value. NA values replaced by 1.
@@ -87,7 +121,7 @@ robjects.r('''deseq2 <- function(rawcount_dataframe, g1, g2) {
 # Python function
 def get_signatures(classes, expression, phenotype, method):
     """Parameters:
-        classes   --  List containing the names of the studied groups. Ex : ['Tumor', 'Normal'].
+        classes   --  List containing the names of the studied groups. Ex : ['Normal', 'Tumor'].
         expression  --  Pd dataframe whose rows are genes, columns are samples and values show the gene expression level.
         phenotype --  Pd dataframe whose rows are and columns are.
         method  --  "limma" or "DESeq2".
@@ -103,8 +137,8 @@ def get_signatures(classes, expression, phenotype, method):
         if method == "limma":
             limma = robjects.r['limma']
             design_dataframe = pd.DataFrame([{'index': x, 'A': int(x in cls1_sample_ids), 'B': int(x in cls2_sample_ids)} for x in expression.columns]).set_index('index')
-            a = limma(pandas2ri.conversion.py2rpy(expression), pandas2ri.conversion.py2rpy(design_dataframe), filter_genes=False)
-            limma_results = pandas2ri.conversion.rpy2py(a)
+            limma_results = limma(pandas2ri.conversion.py2rpy(expression), pandas2ri.conversion.py2rpy(design_dataframe), filter_genes=False)
+            limma_results = pandas2ri.conversion.rpy2py(limma_results)
             signature = pd.DataFrame(limma_results[0]).T
             signature.index = limma_results[1]
             signature.columns = limma_results[2]
@@ -112,13 +146,21 @@ def get_signatures(classes, expression, phenotype, method):
 
         elif method == "DESeq2":
             DESeq2 = robjects.r['deseq2']
-            a = DESeq2(pandas2ri.conversion.py2rpy(expression), pandas2ri.conversion.py2rpy(cls1_sample_ids), pandas2ri.conversion.py2rpy(cls2_sample_ids))
-            DESeq2_results = pandas2ri.conversion.rpy2py(a)
+            DESeq2_results = DESeq2(pandas2ri.conversion.py2rpy(expression), pandas2ri.conversion.py2rpy(cls1_sample_ids), pandas2ri.conversion.py2rpy(cls2_sample_ids))
+            DESeq2_results = pandas2ri.conversion.rpy2py(DESeq2_results)
             signature = pd.DataFrame(DESeq2_results[0]).T
             signature.index = DESeq2_results[1]
             signature.columns = DESeq2_results[2]
             signature = signature.sort_values("log2FoldChange", ascending=False)
 
+        elif method == "edgeR":
+            edgeR = robjects.r['edgeR']
+            edgeR_results = edgeR(pandas2ri.conversion.py2rpy(expression), pandas2ri.conversion.py2rpy(cls1_sample_ids), pandas2ri.conversion.py2rpy(cls2_sample_ids))
+            edgeR_results = pandas2ri.conversion.rpy2py(edgeR_results)
+            signature = pd.DataFrame(edgeR_results[0]).T
+            signature.index = edgeR_results[1]
+            signature.columns = edgeR_results[2]
+            signature = signature.sort_values("logFC", ascending=False)
         signatures[signature_label] = signature
 
     return signatures
@@ -137,7 +179,7 @@ def run_volcano(signature, signature_label, pvalue_threshold, logfc_threshold, p
             logfc_colname = "logFC"
         elif "logCPM" in rowData.index: #edgeR
             expr_colname = "logCPM"
-            pval_colname = "PValue"
+            pval_colname = "FDR"  # "PValue"
             logfc_colname = "logFC"
         elif "baseMean" in rowData.index: #DESeq2
             expr_colname = "baseMean"
@@ -157,6 +199,7 @@ def run_volcano(signature, signature_label, pvalue_threshold, logfc_threshold, p
 
         else:
             color.append('black')
+    # print("Minimal adjusted p-value: ", np.min(signature[pval_colname]), "Maximal adjusted p-value: ", np.max(signature[pval_colname]), "# < 0.05: ", np.sum(signature[pval_colname] < 0.05))
     volcano_plot_results = {'x': signature[logfc_colname], 'y': -np.log10(signature[pval_colname]), 'text':text, 'color': color, 'signature_label': signature_label, 'plot_type': plot_type}
     return volcano_plot_results
 
@@ -188,9 +231,9 @@ def plot_2D_scatter(x, y, text='', title='', xlab='', ylab='', hoverinfo='text',
     fig.write_image(plot_name)
 
 
-def plot_volcano(volcano_plot_results, save_path):
+def plot_volcano(volcano_plot_results, save_path, method):
     spacer = ' '*50
-    plot_name = os.path.join(save_path, "volcano_plot_{}.png".format(volcano_plot_results['signature_label']))
+    plot_name = os.path.join(save_path, "volcano_plot_{}_{}.png".format(method, volcano_plot_results['signature_label']))
     plot_2D_scatter(
         x=volcano_plot_results['x'],
         y=volcano_plot_results['y'],

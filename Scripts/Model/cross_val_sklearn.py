@@ -22,16 +22,18 @@ from sklearn.linear_model import LogisticRegression
 # Arguments
 argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="dataset name")
+argParser.add_argument("-m", "--model", type=str, help="model name (LR_L1_penalty, LR_L2_penalty)")
 argParser.add_argument("-C", type=float, help="Inverse of regularization strength. Must be a positive float.", default=1)
 args = argParser.parse_args()
 name = args.name
+model_name = args.model
 C = args.C
 
 
 # Path
 save_path = get_save_path(name, code_path)
 data_path = get_data_path(name)
-save_name = os.path.join("LR_L1_penalty", f"exp_C_{C}")
+save_name = os.path.join(model_name, f"exp_C_{C}")
 
 
 # Dataset
@@ -41,7 +43,10 @@ print(f"In dataset for cross-validation, we have {n_class} classes and {X.shape[
 
 
 # Model
-clf = LogisticRegression(penalty='l1', C=C, max_iter=1000, solver='saga')
+if model_name == "LR_L1_penalty":
+    clf = LogisticRegression(penalty='l1', C=C, max_iter=1000, solver='saga')
+elif model_name == "LR_L2_penalty":
+    clf = LogisticRegression(penalty='l2', C=C, max_iter=1000, solver='saga')
 
 
 # Split function
@@ -86,7 +91,7 @@ avg_train_balanced_score = avg_train_balanced_score / n_split
 avg_val_balanced_score = avg_val_balanced_score / n_split
 
 print('Final')
-print(f'The balanced training accuracy with LR_L1_penalty is {np.round(avg_train_balanced_score, 2)}.')
+print(f'The balanced training accuracy with {model_name} is {np.round(avg_train_balanced_score, 2)}.')
 print(f'The balanced test accuracy with LR_L1_penalty is {np.round(avg_val_balanced_score, 2)}.')
 
 

@@ -8,7 +8,6 @@ import colorcet as cc
 import math
 import random
 import networkx as nx
-from loader import transform_data
 
 
 def describe_dataset(data):

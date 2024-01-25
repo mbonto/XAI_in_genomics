@@ -21,7 +21,7 @@ from utils import create_new_folder
 # Arguments
 argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="dataset name")
-argParser.add_argument("-m", "--model", type=str, help="model name (LR, MLP, GNN)")
+argParser.add_argument("-m", "--model", type=str, help="model name (LR_L1_penalty, LR_L2_penalty)")
 argParser.add_argument("--set", type=str, help="set (train or test)")
 argParser.add_argument("--gap", type=int, help="prediction gaps are computed every `gap` features removed", default=10)
 argParser.add_argument("--exp", type=int, help="experiment number", default=1)
@@ -86,7 +86,7 @@ elif set_name == 'test':
     
 
 # Load the explainability scores
-ordered_feat_name = np.load(os.path.join(save_path, "order", f"order_IG_LR_L1_penalty_set_train_exp_{exp}.npy"), allow_pickle=True)
+ordered_feat_name = np.load(os.path.join(save_path, "order", f"order_IG_{model_name}_set_train_exp_{exp}.npy"), allow_pickle=True)
 ordered_indices = np.array([np.argwhere(feat == feat_name)[0] for feat in ordered_feat_name]).reshape(-1)
 
 

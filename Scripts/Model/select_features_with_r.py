@@ -21,7 +21,7 @@ argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="dataset name")
 args = argParser.parse_args()
 name = args.name
-method = "DESeq2" # "limma" or "DESeq2"
+method = "edgeR"  # "DESeq2"
 
 
 # Path
@@ -52,9 +52,8 @@ feat_name = np.array(feat_name)
 # Data normalisation.
 ## By default, the same normalisation strategy is applied to all datasets.
 ##                   unit after normalisation: log2(norm_count + 1)
-# Data normalisation used for DESeq2 and Limma.
-## DeSEQ2
-##                  unit after normalisation: norm_count
+# Data normalisation adapted to DESeq2, edgeR
+## DESEQ2, edgeR     unit after normalisation: norm_count
 use_mean, use_std, log2, reverse_log2, divide_by_sum, factor = get_data_normalization_parameters(name)
 use_mean = False
 use_std = False
@@ -109,12 +108,12 @@ results = {}
 for label, signature in signatures.items():
     results[label] = run_volcano(signature, label, pvalue_threshold, logfc_threshold, plot_type)
     print("Volcano plot for {}. Interactive scatter plot which displays the log2-fold changes and statistical significance of each gene calculated by performing a differential gene expression analysis. Genes with logFC > {} and p-value < {} in red and genes with logFC < -{} and p-value < {} in blue. Additional information for each gene is available by hovering over it.".format(label, logfc_threshold, pvalue_threshold, logfc_threshold, pvalue_threshold))
-    plot_volcano(results[label], os.path.join(save_path, "figures"))
+    plot_volcano(results[label], os.path.join(save_path, "figures"), method)
 
     
 # Save results
-np.save(os.path.join(save_path, "figures", "DESeq2_results.npy"), results)
-# results = np.load(os.path.join(save_path, "figures", "DESeq2_results.npy"), allow_pickle=True).item()
+np.save(os.path.join(save_path, "figures", f"{method}_results.npy"), results)
+# results = np.load(os.path.join(save_path, "figures", f"{method}_results.npy"), allow_pickle=True).item()
 
 
 # Save the features (here, the genes) ranked by decreased adjusted p-value associated with log2FoldChange

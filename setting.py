@@ -19,6 +19,14 @@ def get_hyperparameters(name, model_name):
         elif name in ["ttg-all", "pancan"]:
             C = 1.
         return C
+    elif model_name == "LR_L2_penalty":
+        if name in ["ttg-breast", "ttg-all", "pancan"]:
+            C = 0.1
+        elif name in ["BRCA-pam",]:
+            C = 1
+        elif name in ["BRCA",]:
+            C = 0.01
+        return C
     else:
         n_layer = None
         n_hidden_feat = None
