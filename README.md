@@ -73,9 +73,8 @@ For more details, please have a look at the scientific articles.
 
 
 ### 2. Learning
-Each model is trained 10 times with a different random initialisation. The results presented here are the averages and standard deviations obtained with the 10 learned models.
+Each model is trained 10 times with a different random initialisation. The results presented here are the average balanced accuracies (%) and standard deviations obtained with the 10 learned models.
 
-Balanced accuracy (%)
 | Dataset           | LR+L1             | LR+L2             | MLP               | GNN               |
 |:-----------------:|:-----------------:|:-----------------:|:-----------------:|:-----------------:|
 | PanCan            | 95.0              |94.3               |94.3 +- 0.3        |92.1 +- 0.4        |
