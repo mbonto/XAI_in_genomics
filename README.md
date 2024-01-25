@@ -16,38 +16,32 @@ Many machine learning models have been proposed to classify phenotypes from gene
 - PyTorch geometric = 2.0
 
 
-### 2. Datasets
+### 2. Download datasets
 The datasets will be stored in a folder on your computer. Set the absolute path of this folder in the function set_path in setting.py.
 
-*More details on the datasets are presented in the notebooks `Describe_data.ipynb` and `Discover_gene_expression_data.ipynb` contained in their respective folders.*
+*The datasets gather data coming from the TCGA, TARGET and GTEx databases [1]. More details on the datasets are presented in the notebooks `Describe_data.ipynb` and `Discover_gene_expression_data.ipynb` contained in their respective folders.*
 
-#### TCGA, TARGET, GTEx data [1]
 ##### PanCan
-To download the PanCan dataset, go to the Pancan/Data folder and execute `python get_pancan.py`.
+Go to the Pancan/Data folder and execute `python get_pancan.py`.
 
 ##### BRCA
-To download the BRCA dataset, go to the Gdc/Data folder and execute `python get_gdc.py`.
+Go to the Gdc/Data folder and execute `python get_gdc.py`.
 
 ##### BRCA-pam
-To download the BRCA-pam dataset, go to the Legacy/Data folder and execute `python get_legacy.py`.
+Go to the Legacy/Data folder and execute `python get_legacy.py`.
 
 ##### ttg-breast and ttg-all
-To download the ttg-breast and ttg-all datasets, go to the TTG/Data folder and execute `python get_ttg.py`.
-
-
-#### Simulation
-To generate simulated data with a latent dirichlet allocation model, go to Simulation/Data folder and execute `python get_simu.py --name [name] --size [size]`.
+Go to the TTG/Data folder and execute `python get_ttg.py`.
 
 
 ### 3. Learning models
 In the following, the same commands can be used for various datasets and learning models.
-- Various datasets can be used: PanCan (pancan), BRCA, BRCA-pam, ttg-breast, ttg-all. 
-- Various models can be trained: logistic regression (LR), multilayer perceptron (MLP), graph neural network (GCN).
+- Various datasets can be used: pancan (PanCan), BRCA, BRCA-pam, ttg-breast, ttg-all. 
+- Various models can be trained using PyTorch - logistic regression (LR), multilayer perceptron (MLP), graph neural network (GCN), or scikit-learn - logistic regression (LR_L1_penalty, LR_L2_penalty).
 
 Go to Scripts/Model.
 #### Graph
-To compute the correlation graph over all features using training examples, execute `python infer_graph.py -n pancan --min_value 0.5`.
-All correlations whose absolute value is lower than `min_value` are set to 0.
+To compute the correlation graph over all features using training examples, execute `python infer_graph.py -n [dataset_name]`.
 
 #### Model
 To train a torch model (LR, MLP, GCN) on a dataset, execute `python train_nn.py -n [dataset_name] -m [model_name]`.
