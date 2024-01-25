@@ -33,7 +33,8 @@ To download the BRCA-pam dataset, go to the Legacy/Data folder and execute `pyth
 
 ##### ttg-breast and ttg-all
 To download the ttg-breast and ttg-all datasets, go to the TTG/Data folder and execute `python get_ttg.py`.
-More details on the data are presented in two notebooks `Describe_ttg_data.ipynb` and `Discover_gene_expression_data.ipynb`.
+
+*More details on the data are presented in two notebooks `Describe_ttg_data.ipynb` and `Discover_gene_expression_data.ipynb`.*
 
 
 #### Simulation
