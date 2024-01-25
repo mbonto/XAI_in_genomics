@@ -19,7 +19,7 @@ Many machine learning models have been proposed to classify phenotypes from gene
 ### 2. Datasets
 The datasets will be stored in a folder on your computer. Set the absolute path of this folder in the function set_path in setting.py.
 
-More details on the datasets are presented in the notebooks `Describe_data.ipynb` and `Discover_gene_expression_data.ipynb` contained in their respective folders.
+*More details on the datasets are presented in the notebooks `Describe_data.ipynb` and `Discover_gene_expression_data.ipynb` contained in their respective folders.*
 
 #### TCGA, TARGET, GTEx data [1]
 ##### PanCan
@@ -33,8 +33,6 @@ To download the BRCA-pam dataset, go to the Legacy/Data folder and execute `pyth
 
 ##### ttg-breast and ttg-all
 To download the ttg-breast and ttg-all datasets, go to the TTG/Data folder and execute `python get_ttg.py`.
-
-*More details on the data are presented in two notebooks `Describe_ttg_data.ipynb` and `Discover_gene_expression_data.ipynb`.*
 
 
 #### Simulation
