@@ -17,39 +17,68 @@ Many machine learning models have been proposed to classify phenotypes from gene
 
 
 ### 2. Download datasets
-The datasets will be stored in a folder on your computer. Set the absolute path of this folder in the function set_path in setting.py.
+The datasets are stored in a folder on your computer. Set the absolute path of this folder in the function set_path in setting.py.
 
-*The datasets gather data coming from the TCGA, TARGET and GTEx databases [1]. More details on the datasets are presented in the notebooks `Describe_data.ipynb` and `Discover_gene_expression_data.ipynb` contained in their respective folders.*
+**PanCan** Go to the Pancan/Data folder and execute `python get_pancan.py`.
 
-##### PanCan
-Go to the Pancan/Data folder and execute `python get_pancan.py`.
+**BRCA** Go to the Gdc/Data folder and execute `python get_gdc.py`.
 
-##### BRCA
-Go to the Gdc/Data folder and execute `python get_gdc.py`.
+**BRCA-pam** Go to the Legacy/Data folder and execute `python get_legacy.py`.
 
-##### BRCA-pam
-Go to the Legacy/Data folder and execute `python get_legacy.py`.
+**ttg-breast and ttg-all** Go to the TTG/Data folder and execute `python get_ttg.py`.
 
-##### ttg-breast and ttg-all
-Go to the TTG/Data folder and execute `python get_ttg.py`.
+*The datasets gather data coming from the TCGA, TARGET and GTEx databases [1]. More details on the datasets can be found in the `Describe_data.ipynb` and `Discover_gene_expression_data.ipynb` notebooks in their respective folders.*
+
+**Simulations** A code to simulate data from a latent dirichlet allocation model is also accessible in the Simulation/Data folder. 
+
+### 3. Prepare datasets
+**The same commands can be used for multiple dataset_names - pancan (PanCan), BRCA, BRCA-pam, ttg-breast, ttg-all.**
+
+To access the data, a torch dataset is defined by the custom class [TCGA_dataset(data_path, database, cancer, label_name, weakly_expressed_genes_removed=True, ood_samples_removed=True, normalize_expression=True)](dataset.py).
+
+Two functions use this class.
+- [Dataloader for PyTorch](loader.py): train_loader, test_loader, n_class, n_feat, class_name, feat_name, transform, n_sample = load_dataloader(data_path, name, device, weakly_expressed_genes_removed=True, ood_samples_removed=True). *transform is a function standardising gene values using their means and standard deviations calculated from the training data.*
+ 
+- [Dataset for scikit-learn](loader.py): X_train, X_test, y_train, y_test, n_class, n_feat, class_name, feat_name = load_dataset(data_path, name, normalize, weakly_expressed_genes_removed=True, ood_samples_removed=True, studied_features=None, normalize_expression=True). *Each gene is standardised using its mean and standard deviation computed from the training data.*
+
+#### Gene expression unit
+Initially, genes in different datasets are not expressed with the same unit. Here, they are all expressed in log2(norm_count + 1), where norm_count indicates that the sum of the expression of all the genes in a sample is equal to 10^6.
+
+| Dataset          | Original unit                | Unit used here           |
+|:----------------:|:----------------------------:|:------------------------:|
+| ttg-breast/all   | log2(count_uq + 1)           | log2(norm_count + 1)     |
+| BRCA             | log2(count + 1)              | log2(norm_count + 1)     |
+| pancan           | count_uq                     | log2(norm_count + 1)     |
+| BRCA-pam         | log2(count_uq + 1)           | log2(norm_count + 1)     |
 
 
-### 3. Learning models
-In the following, the same commands can be used for various datasets and learning models.
-- Various datasets can be used: pancan (PanCan), BRCA, BRCA-pam, ttg-breast, ttg-all. 
-- Various models can be trained using PyTorch - logistic regression (LR), multilayer perceptron (MLP), graph neural network (GCN), or scikit-learn - logistic regression (LR_L1_penalty, LR_L2_penalty).
+#### Quality control
+By default, genes whose values are missing or whose maximum expression value is zero are deleted.
+Additionally, low expressed genes (less than 5 counts in more than 75% training samples for each class) and out_of-distribution samples (in which more than 75% of genes have a zero expression) can be removed. To detect these genes and samples, go to Script/Preprocessing and execute `python quality_control -n [dataset_name]`. 
+
+To save gene names in a text file, execute `python store_gene_names -n [dataset_name]`.   
+
+
+### 4. Learn models
+**The same commands can be used for multiple machine learning model_names, using PyTorch - logistic regression (LR), multilayer perceptron (MLP), graph neural network (GCN) - or scikit-learn - logistic regression (LR_L1_penalty, LR_L2_penalty).**
 
 Go to Scripts/Model.
+
 #### Graph
-To compute the correlation graph over all features using training examples, execute `python infer_graph.py -n [dataset_name]`.
+*k is a parameter limiting the density of edges in the graph. Only the edges with the highest n_node x k weights are kept.*
+
+To compute the correlation graph over all features using the training data, execute `python infer_graph.py -n [dataset_name] --method pearson_correlation -k [integer]`.
 
 #### Model
-To train a torch model (LR, MLP, GCN) on a dataset, execute `python train_nn.py -n [dataset_name] -m [model_name]`.
+*exp is the experiment number used to initialise the parameters of the models and to store the results.*
 
-To train a scikit-learn model (LR_L1_penalty, LR_L2_penalty) on a dataset, execute `python train_sklearn.py -n [dataset_name] -m [model_name]`.
+To train a torch model, execute `python train_nn.py -n [dataset_name] -m [model_name] --exp [integer]`.
 
+To train a scikit-learn model, execute `python train_sklearn.py -n [dataset_name] -m [model_name] --exp [integer]`.
 
-### 4. Explainability
+The performance of a trained model is averaged over several experiments, indexed between 1 and n_repet. It is accessible with the command `python get_summary.py -n [dataset_name] -m [model_name] --n_repet [integer]`.  
+
+### 5. Explain models
 Go to Scripts/Explanation.
 
 To compute the integrated gradients scores on the training examples, execute `python get_attributions.py -n [dataset_name] -m [model_name] --set train`.
