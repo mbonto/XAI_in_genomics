@@ -23,12 +23,10 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="dataset name")
 argParser.add_argument("-m", "--model", type=str, help="model name (LR, LR_L1_penalty, LR_L2_penalty)")
-argParser.add_argument("--set", type=str, help="set (train or test)")
 argParser.add_argument("--exp", type=int, help="experiment number", default=1)
 args = argParser.parse_args()
 name = args.name
 model_name = args.model
-set_name = args.set
 exp = args.exp
 print('Model    ', model_name)
 
@@ -53,13 +51,6 @@ train_loader, test_loader, n_class, n_feat, class_name, feat_name, transform, n_
 feat_name = np.array(feat_name)
 
 
-# Set
-if set_name == 'train':
-    loader = train_loader
-elif set_name == 'test':
-    loader = test_loader
-    
-    
 # Model
 if model_name == "LR":
     softmax = True
@@ -130,80 +121,5 @@ order = np.argsort(-scores)
 np.save(os.path.join(save_path, "order", f"order_weight_{model_name}_exp_{exp}.npy"), feat_name[order])
 np.save(os.path.join(save_path, "order", f"order_weight_{model_name}_exp_{exp}_values.npy"), scores[order])
 
-
-"""
-if n_class == 2:
-    # Compute the feature effects for each sample
-    effect = np.zeros((n_sample, n_feat))
-    y_pred = np.ones((n_sample), dtype='int')
-    y_true = np.ones((n_sample), dtype='int')
-    count = 0
-    for x, target in loader:
-        batch_size = x.shape[0]
-        x = x.to(device)
-        if transform:
-            x = transform(x)
-    
-        # Prediction
-        if model_name == "LR":
-            outputs = model(x)
-            pred = ((outputs.data > 0.5).reshape(-1) * 1).detach().cpu().numpy()
-        else:
-            pred = model.predict(x.detach().cpu().numpy())
-
-        y_true[count:count + batch_size] = target.cpu().detach().numpy()
-        y_pred[count:count + batch_size] = pred
-    
-        # Effect
-        effect[count:count + batch_size, :] = x.detach().cpu().numpy() * params  # (batch_size, n_feat)
-    
-        count = count + batch_size
-    
-
-    # Keep only correctly classified examples
-    correct_indices = np.argwhere((y_pred - y_true) == 0)[:, 0]
-    print("There are {} uncorrect examples. We remove the uncorrect examples from our study.".format(len(y_pred) - len(correct_indices)))
-    effect = effect[correct_indices]
-    y_true = y_true[correct_indices]
-    y_pred = y_pred[correct_indices]
-    
-    
-    # Compute the feature effects averaged per class
-    effect_per_class = np.zeros((n_class, n_feat))
-    count = np.zeros((n_class, 1))
-    for i in range(effect.shape[0]):
-        effect_per_class[y_true[i]] += effect[i]
-        count[y_true[i], 0] += 1
-    effect_per_class = effect_per_class / count
-    print("Effect per class", effect_per_class.shape, "min", np.round(np.min(effect_per_class), 2), "max", np.round(np.max(effect_per_class), 2))
-    
-    
-    # Compute the feature effects averaged over all studied features
-    base_class, studied_class = get_XAI_hyperparameters(name, n_class)
-    avg_effect = np.zeros((n_feat))
-    for c in studied_class:
-        avg_effect += effect_per_class[c]
-    avg_effect = avg_effect / len(studied_class)
-    print("Effect averaged over studied classes", avg_effect.shape, "min", np.round(np.min(avg_effect), 2), "max", np.round(np.max(avg_effect), 2))
-    
-    
-    # Compute the feature effects with respect to the baseline
-    baseline = get_baseline(train_loader, device, n_feat, transform, base_class)  # shape (1, n_feat)
-    baseline = baseline.detach().cpu().numpy()
-    baseline_effect = (baseline * params).reshape(-1)
-    avg_effect_wrt_baseline = avg_effect - baseline_effect
-    print("Effect for the baseline", baseline_effect.shape, "min", np.round(np.min(baseline_effect), 2), "max", np.round(np.max(baseline_effect), 2))
-    print("Averaged effect - baseline effect", avg_effect_wrt_baseline.shape, "min", np.round(np.min(avg_effect_wrt_baseline), 2), "max", np.round(np.max(avg_effect_wrt_baseline), 2))
-    
-    
-    # Save
-    order = np.argsort(-avg_effect)
-    np.save(os.path.join(save_path, "order", f"order_effect_{model_name}_exp_{exp}.npy"), feat_name[order])
-    np.save(os.path.join(save_path, "order", f"order_effect_{model_name}_exp_{exp}_values.npy"), scores[order])
-    order = np.argsort(-avg_effect_wrt_baseline)
-    np.save(os.path.join(save_path, "order", f"order_effect_wrt_baseline_{model_name}_exp_{exp}.npy"), feat_name[order])
-    np.save(os.path.join(save_path, "order", f"order_effect_wrt_baseline_{model_name}_exp_{exp}_values.npy"), scores[order])
-
-"""
 
 
