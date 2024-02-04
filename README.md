@@ -11,10 +11,13 @@ Many machine learning models have been proposed to classify phenotypes from gene
 
 ## Usage
 ### 1. Dependencies
+<details>
+<summary> <b> Show </b> </summary><br>
 - Python = 3.7
 - PyTorch = 1.11
 - PyTorch geometric = 2.0
 
+</details>
 
 ### 2. Download datasets
 <details>
@@ -130,7 +133,10 @@ To run edgeR and DESeq2, execute `python select_features_with_r.py -n [dataset_n
 
 </details>
 
-### 7. Summary 
+### 7. Overview of the metrics employed for ranking genes according to their level of importance
+<details>
+<summary> <b> Show </b> </summary><br>
+ 
 | Method | Scores used to rank gene in order of importance | Multi-class adjustment (if needed)|
 |:------:|:------:|:---------------------------------:|
 | ML model (IG) | Absolute integrated gradients scores | Class-wise average score |
