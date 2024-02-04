@@ -159,7 +159,7 @@ To compare the top 10 and top 100 ranked genes, execute `python plot_selected_fe
 
 </details>
 
-### 8. Comparison of the classification potential of selected genes
+### 8. Evaluation of the classification potential of genes selected through various methods
 <details>
 <summary> <b> Show </b> </summary><br>
 
@@ -179,7 +179,7 @@ After retraining LR_L1_penalty, LR_L2_penalty, MLP and GCN on genes selected by 
 
 </details>
 
-### 9. Comparison of the biological potential of selected genes
+### 9. Evaluation of the biological potential of genes selected through various methods
 <details>
 <summary> <b> Show </b> </summary><br>
 
