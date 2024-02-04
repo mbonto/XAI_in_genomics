@@ -7,15 +7,12 @@ import numpy as np
 import random
 import torch
 from joblib import load
-from sklearn.metrics import accuracy_score
 import argparse
 from setting import *
 from utils import *
 from loader import *
 from evaluate import *
 from models import *
-from XAI_method import *
-set_pyplot()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 

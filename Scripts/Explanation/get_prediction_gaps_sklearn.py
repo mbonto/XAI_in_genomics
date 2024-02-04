@@ -9,11 +9,7 @@ from sklearn.metrics import accuracy_score
 from joblib import load
 import argparse
 from setting import *
-from dataset import *
 from loader import *
-from evaluate import *
-from models import *
-from XAI_method import *
 from XAI_interpret import *
 from utils import create_new_folder
 

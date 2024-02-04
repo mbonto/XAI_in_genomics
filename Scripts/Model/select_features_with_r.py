@@ -7,7 +7,6 @@ import sys
 code_path = os.path.split(os.path.split(os.getcwd())[0])[0]
 sys.path.append(code_path)
 from setting import *
-from dataset import *
 from utils import *
 from loader import *
 from feature_selection_r import * 

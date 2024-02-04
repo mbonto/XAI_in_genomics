@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-import os
 from sklearn.metrics import classification_report, balanced_accuracy_score
 import warnings
 from evaluate import *

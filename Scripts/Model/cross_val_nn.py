@@ -12,13 +12,11 @@ from setting import *
 from utils import *
 from dataset import *
 from loader import *
-from plots_and_stats import *
 from evaluate import *
 from models import *
 from training import *
-set_pyplot()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-# device = torch.device('cpu')
+
 
 # Arguments
 argParser = argparse.ArgumentParser()

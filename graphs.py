@@ -1,6 +1,6 @@
 import numpy as np
 import scipy
-from scipy.sparse import csc_matrix, eye, issparse
+from scipy.sparse import eye, issparse
 import networkx as nx
 from networkx.algorithms import community
 

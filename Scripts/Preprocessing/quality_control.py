@@ -3,13 +3,9 @@ import os
 import sys
 code_path = os.path.split(os.path.split(os.getcwd())[0])[0]
 sys.path.append(code_path)
-import json
 import argparse
 from setting import *
-from download_data import *
 from dataset import *
-from plots_and_stats import *
-from utils import *
 from loader import *
 
 

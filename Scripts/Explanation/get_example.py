@@ -7,13 +7,8 @@ import numpy as np
 import torch
 import argparse
 from setting import *
-from utils import *
 from loader import *
-from evaluate import *
-from models import *
 from XAI_method import *
-from XAI_interpret import *
-set_pyplot()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
@@ -57,7 +52,6 @@ baseline = get_baseline(train_loader, device, n_feat, transform, base_class).to(
 XAI_method = "Integrated_Gradients"
 attr, y_pred, y_true, labels, features, baseline, _ = load_attributions(XAI_method, os.path.join(save_path, save_name, XAI_method), set_name=set_name)
 attr = transform_data(attr, transform='divide_by_norm')
-global_indices = get_features_order(attr, _type="decreasing")
 
 
 # Example
@@ -76,9 +70,14 @@ for x, y in loader:
     # Sanity check
     assert y.item() == y_true[index], 'Problem with data order.'
     # Rank features by importance for each example
-    local_indices = np.argsort(-attr[index].reshape(1, -1), axis=1)
+    local_indices = np.argsort(-np.abs(attr)[index].reshape(1, -1), axis=1)
     break
 print("Class", y.item())
+
+
+# Global ranking
+ordered_feat_name = np.load(os.path.join(save_path, "order", f"order_IG_{model_name}_set_{set_name}_exp_{exp}.npy"), allow_pickle=True)
+global_indices = np.array([np.argwhere(feat == feat_name)[0] for feat in ordered_feat_name]).reshape(-1)
 
 
 # Save

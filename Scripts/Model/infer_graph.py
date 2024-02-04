@@ -2,7 +2,7 @@
 import os
 import sys
 import numpy as np
-from scipy.sparse import csc_matrix, eye, save_npz
+from scipy.sparse import csc_matrix, save_npz
 code_path = os.path.split(os.path.split(os.getcwd())[0])[0]
 sys.path.append(code_path)
 import argparse

@@ -172,20 +172,6 @@ def remove_samples(sample_IDs, labels, label_key, database):
     for ID in IDs_to_remove:
         sample_IDs.remove(ID)
         
-        
-# def remove_genes(data_path, database, cancer, expression):
-#     genes_to_remove = get_unwanted_genes(data_path, database, cancer)
-#     expression.drop(columns=genes_to_remove, inplace=True)
-
-
-# def get_unwanted_genes(data_path, database, cancer):
-#     try:
-#         genes_to_remove = list(np.load(os.path.join(data_path, database, "expression", "genes_to_remove.npy")))
-#         print("The following genes are removed from the study:", genes_to_remove)
-#     except:
-#         genes_to_remove = []
-#     return genes_to_remove
-
 
 def get_column_name(data_path, database, cancer, data_type):
     column = {}

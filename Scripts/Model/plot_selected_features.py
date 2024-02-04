@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import argparse
 import json
 import seaborn as sns
-from sklearn.metrics import jaccard_score
 from setting import *
 from utils import *
 from loader import *

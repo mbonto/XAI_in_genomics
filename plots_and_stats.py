@@ -1,5 +1,4 @@
 import numpy as np
-import torch
 import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib import cm

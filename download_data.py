@@ -1,5 +1,5 @@
 import os
-from utils import create_new_folder, read_file, download
+from utils import create_new_folder, download
 
 
 

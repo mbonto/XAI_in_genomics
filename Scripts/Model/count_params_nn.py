@@ -4,18 +4,10 @@ import sys
 code_path = os.path.split(os.path.split(os.getcwd())[0])[0]
 sys.path.append(code_path)
 import torch
-from sklearn.metrics import balanced_accuracy_score
-import time
 import argparse
 from setting import *
-from utils import *
-from dataset import *
 from loader import *
-from plots_and_stats import *
-from evaluate import *
 from models import *
-from training import *
-set_pyplot()
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
