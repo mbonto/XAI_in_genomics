@@ -100,13 +100,14 @@ The performance of a trained model is averaged over several experiments, indexed
 
 Go to Scripts/Explanation.
 
-The predictions of the models are explained using the integrated gradients method (IG). 
-- IG on the training examples: `python get_attributions.py -n [dataset_name] -m [model_name] --exp [integer] --set train`.
+The explanation of a model's prediction on a training example is elucidated through the Integrated Gradients method (IG).
+- For a PyTorch model: `python get_attributions.py -n [dataset_name] -m [model_name] --exp [integer] --set train`.
+- For a scikit-learn model: `python get_attributions_sklearn.py -n [dataset_name] -m [model_name] --exp [integer] --set train`.
 - Scores averaged over all studied classes: `python get_attributions_averaged_per_class.py -n [dataset_name] -m [model_name] --exp [integer] --set train`.
 
 LR can also be interpreted by looking at the amplitude of the parameters. 
 
-`python get_average_feature_effect.py -n [dataset_name] -m [model_name] --exp [integer]`
+`python get_LR_weights.py -n [dataset_name] -m [model_name] --exp [integer]`
 
 #### Understand IG scores
 The prediction gaps (PGs) can be used to analyse the IG scores. Local PGs are obtained by ranking the features of each example independently. Global PGs are obtained by ranking them in the same way for all examples of the same class. 
@@ -147,7 +148,7 @@ To run edgeR and DESeq2, execute `python select_features_with_r.py -n [dataset_n
 | PCA | Absolute values of the coefficient on the first PC | |
 | MI | Mutual information | |
 
-The scores generated for this article are accessible in dataset_folder/Results/scores.zip. 
+For reproducibility, the scores computed and used in the article are accessible in dataset_folder/Results/scores.zip. 
 
 Go to Scripts/Explanation.
 
@@ -185,7 +186,7 @@ After retraining LR_L1_penalty, LR_L2_penalty, MLP and GCN on genes selected by 
 
 Go to Visualisation/.
 
-Established genes sets that are over-represented in the top-ranked genes selected by the different methods, can be identified using the [GSEA website](https://www.gsea-msigdb.org/gsea/msigdb). For the experiments in this article, we stored the over-represented genes in a csv file. They can be viewed with show_GSEA.ipynb notebook.
+Established genes sets that are over-represented in the top-ranked genes selected by the different methods, can be identified using the [GSEA website](https://www.gsea-msigdb.org/gsea/msigdb). For the experiments in this article, we stored the over-represented genes in a csv file. For reproducibility, these files are accessible in Visualisation/GSEA.zip. The figures of the article can be reproduced using show_GSEA.ipynb notebook.
 
 </details>
 
