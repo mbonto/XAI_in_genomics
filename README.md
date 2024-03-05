@@ -17,6 +17,7 @@ Many machine learning models have been proposed to classify phenotypes from gene
 - Python = 3.7
 - PyTorch = 1.11
 - PyTorch geometric = 2.0
+- six, pandas, matplotlib, python-magic, seaborn, colorcet, captum
 
 </details>
 
