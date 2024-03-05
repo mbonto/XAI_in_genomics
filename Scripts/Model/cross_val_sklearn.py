@@ -36,13 +36,6 @@ X, X_test, y, y_test, n_class, n_feat, class_name, feat_name = load_dataset(data
 print(f"In dataset for cross-validation, we have {n_class} classes and {X.shape[0]} examples. Each example contains {n_feat} features.")
 
 
-# Model
-if model_name == "LR_L1_penalty":
-    clf = LogisticRegression(penalty='l1', C=C, max_iter=1000, solver='saga')
-elif model_name == "LR_L2_penalty":
-    clf = LogisticRegression(penalty='l2', C=C, max_iter=1000, solver='saga')
-
-
 # Split function
 n_split = 4
 splits = StratifiedKFold(n_splits=n_split, shuffle=True, random_state=0)
@@ -65,14 +58,19 @@ for fold, (train_idx, val_idx) in enumerate(splits.split(X, y)):
     use_mean, use_std, log2, reverse_log2, divide_by_sum, factor = get_data_normalization_parameters(name)
     cv_X, cv_X_val = normalize_train_test_sets(cv_X, cv_X_val, use_mean, use_std, log2, reverse_log2, divide_by_sum, factor)
 
-    
+    # Model
+    if model_name == "LR_L1_penalty":
+        clf = LogisticRegression(penalty='l1', C=C, max_iter=1000, solver='saga')
+    elif model_name == "LR_L2_penalty":
+        clf = LogisticRegression(penalty='l2', C=C, max_iter=1000, solver='saga')
+
     # Train
     clf.fit(cv_X, cv_y)
     cv_y_pred = clf.predict(cv_X)
     train_score = accuracy_score(cv_y, cv_y_pred) * 100
     train_balanced_score = balanced_accuracy_score(cv_y, cv_y_pred) * 100
 
-    # Test
+    # Validation
     cv_y_val_pred = clf.predict(cv_X_val)
     val_score = accuracy_score(cv_y_val, cv_y_val_pred) * 100
     val_balanced_score = balanced_accuracy_score(cv_y_val, cv_y_val_pred) * 100

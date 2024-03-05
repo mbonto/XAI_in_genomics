@@ -45,15 +45,6 @@ train_loader, test_loader, n_class, n_feat, class_name, feat_name, _, n_sample =
 print(f"In our dataset, we have {n_class} classes and {n_sample} examples. Each example contains {n_feat} features.")
 
 
-# Model
-softmax = False
-model = load_model(model_name, n_feat, n_class, softmax, device, save_path, n_layer, n_hidden_feat, graph_name)
-
-
-# Optimization
-criterion, optimizer, scheduler, n_epoch = set_optimizer(name, model)
-
-
 # Preparation of the dataset
 ## Number of training samples
 n_train_sample = 0
@@ -98,6 +89,14 @@ for fold, (train_idx, val_idx) in enumerate(splits.split(X, y)):
         std = torch.ones(std.shape).to(device)
     transform = normalize(mean, std, log2, reverse_log2, divide_by_sum, factor)
 
+    # Model
+    softmax = False
+    model = load_model(model_name, n_feat, n_class, softmax, device, save_path, n_layer, n_hidden_feat, graph_name)
+    model.train()
+
+    # Optimization
+    criterion, optimizer, scheduler, n_epoch = set_optimizer(name, model)
+
     # Train
     epochs_acc = []
     epochs_loss = []
@@ -105,13 +104,14 @@ for fold, (train_idx, val_idx) in enumerate(splits.split(X, y)):
         epoch_loss, epoch_acc = train(model, criterion, optimizer, train_loader, device, transform)  # train for 1 epoch
         print("\rLoss at epoch {}: {:.2f}. (Acc: {:.2f})".format(epoch+1, epoch_loss, epoch_acc*100), end='')
         scheduler.step()
-    ## Score
+    
+    # Train score
+    model.eval()
     y_pred, y_true = predict(model, train_loader, device, transform)
     train_score = compute_accuracy_from_predictions(y_pred, y_true)
     train_balanced_score = balanced_accuracy_score(y_true, y_pred) * 100
 
-    # Test
-    ## Score
+    # Validation score
     y_pred, y_true = predict(model, val_loader, device, transform)
     val_score = compute_accuracy_from_predictions(y_pred, y_true)
     val_balanced_score = balanced_accuracy_score(y_true, y_pred) * 100
