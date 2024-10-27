@@ -12,7 +12,7 @@ from utils import *
 # Arguments
 argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="dataset name")
-argParser.add_argument("-m", "--model", type=str, help="model name (LR, MLP, GCN, LR_L1_penalty, DESeq2, MI, LR_L2_penalty, edgeR)")
+argParser.add_argument("-m", "--model", type=str, help="model name (LR, MLP, GCN, LR_L1_penalty, DESeq2, MI, LR_L2_penalty, edgeR, xgboost)")
 argParser.add_argument("--exp", type=int, help="experiment number")
 args = argParser.parse_args()
 name = args.name
@@ -32,7 +32,8 @@ set_name = {"LR": f"order_IG_LR_set_train_exp_{exp}",
             "LR_L2_penalty": f"order_IG_LR_L2_penalty_set_train_exp_{exp}",
             "DESeq2": "order_DESeq2",
             "MI": "order_MI",
-            "edgeR": "order_edgeR"}
+            "edgeR": "order_edgeR",
+            "xgboost": f"order_xgboost_exp_{exp}"}
 gene_list = np.load(os.path.join(save_path, "order", set_name[model_name] + ".npy"), allow_pickle=True)
 gene_values = np.load(os.path.join(save_path, "order", set_name[model_name] + "_values.npy"), allow_pickle=True)
 

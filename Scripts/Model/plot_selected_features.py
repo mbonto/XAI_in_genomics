@@ -5,9 +5,11 @@ code_path = os.path.split(os.path.split(os.getcwd())[0])[0]
 sys.path.append(code_path)
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import argparse
 import json
 import seaborn as sns
+from matplotlib.colors import ListedColormap
 from setting import *
 from utils import *
 from loader import *
@@ -43,6 +45,7 @@ order_IG_LR = {}
 order_IG_GCN = {}
 order_IG_L1 = {}
 order_IG_L2 = {}
+order_XGB = {}
 for exp in range(1, n_repet+1):
     order_weight_L1[exp] = np.load(os.path.join(save_path, "order", f"order_weight_LR_L1_penalty_exp_{exp}.npy"))
     order_weight_L2[exp] = np.load(os.path.join(save_path, "order", f"order_weight_LR_L2_penalty_exp_{exp}.npy"))
@@ -52,6 +55,7 @@ for exp in range(1, n_repet+1):
     order_IG_GCN[exp] = np.load(os.path.join(save_path, "order", f"order_IG_GCN_set_train_exp_{exp}.npy"), allow_pickle=True) 
     order_IG_L1[exp] = np.load(os.path.join(save_path, "order", f"order_IG_LR_L1_penalty_set_train_exp_{exp}.npy"))
     order_IG_L2[exp] = np.load(os.path.join(save_path, "order", f"order_IG_LR_L2_penalty_set_train_exp_{exp}.npy"))
+    order_XGB[exp] = np.load(os.path.join(save_path, "order", f"order_xgboost_exp_{exp}.npy"))
 
 
 assert len(order_VAR[1]) == n_feat
@@ -68,6 +72,7 @@ for exp in range(1, n_repet+1):
     assert len(order_IG_GCN[exp]) == n_feat
     assert len(order_IG_L1[exp]) == n_feat
     assert len(order_IG_L2[exp]) == n_feat
+    assert len(order_XGB[exp]) == n_feat
 
 
 
@@ -87,7 +92,8 @@ for n in n_args:
             'LR+L1 (IG)': {},
             'LR+L2 (IG)': {},
             'MLP': {},
-            'GNN':{}
+            'GNN':{},
+            'XGBoost':{}
             }
     data['VAR'][1] = list(order_VAR[1][:n])
     data['PCA'][1] = list(order_PCA[1][:n])
@@ -101,6 +107,7 @@ for n in n_args:
         data['LR+L2 (IG)'][exp] = list(order_IG_L2[exp][:n])
         data['MLP'][exp] = list(order_IG_MLP[exp][:n])
         data['GNN'][exp] = list(order_IG_GCN[exp][:n])
+        data['XGBoost'][exp] = list(order_XGB[exp][:n])
     x = []
     for k1 in data.keys():
         for k2 in data.keys():
@@ -117,17 +124,28 @@ for n in n_args:
                 count = len(set(data[k1][i]))
             else:
                 count = count / (n_repet_k1 * n_repet_k2) if k1 != k2 else count / (n_repet_k1 * n_repet_k2 - n_repet_k1)
-            x.append((k1, k2, count))
+            # Optional: manually select the cases that you want to color in gray by giving them the value 200
+            if name in ['BRCA', 'ttg-breast'] and n == 100 and k1 == 'XGBoost' and k2 in ['VAR', 'PCA', 'MI', 'DESeq2', 'EdgeR']:
+               x.append((k1, k2, 200))
+            elif name in['BRCA', 'ttg-breast'] and n == 100 and k2 == 'XGBoost' and k1 in ['GNN', 'MLP', 'LR+L1 (IG)', 'LR+L1 (weight)', 'LR+L2 (IG)', 'LR+L2 (weight)']:
+                x.append((k1, k2, 200))
+            else:
+                x.append((k1, k2, count))
 
     df = pd.DataFrame(x).pivot(index=0, columns=1, values=2)
-    df = df[['VAR', 'PCA', 'MI', 'EdgeR', 'DESeq2', 'LR+L1 (weight)', 'LR+L1 (IG)', 'LR+L2 (weight)', 'LR+L2 (IG)', 'MLP', 'GNN']]
-    df = df.reindex(['VAR', 'PCA', 'MI', 'EdgeR', 'DESeq2', 'LR+L1 (weight)', 'LR+L1 (IG)', 'LR+L2 (weight)', 'LR+L2 (IG)', 'MLP', 'GNN'])
+    # df = df[['VAR', 'PCA', 'MI', 'EdgeR', 'DESeq2', 'XGBoost', 'LR+L1 (weight)', 'LR+L1 (IG)', 'LR+L2 (weight)', 'LR+L2 (IG)', 'MLP', 'GNN']]
+    df = df[['GNN', 'MLP', 'LR+L2 (IG)', 'LR+L2 (weight)', 'LR+L1 (IG)', 'LR+L1 (weight)', 'XGBoost', 'VAR', 'PCA', 'MI', 'EdgeR', 'DESeq2']]
+
+    # df = df.reindex(['VAR', 'PCA', 'MI', 'EdgeR', 'DESeq2', 'XGBoost', 'LR+L1 (weight)', 'LR+L1 (IG)', 'LR+L2 (weight)', 'LR+L2 (IG)', 'MLP', 'GNN'])
+    df = df.reindex(['GNN', 'MLP', 'LR+L2 (IG)', 'LR+L2 (weight)', 'LR+L1 (IG)', 'LR+L1 (weight)', 'XGBoost', 'VAR', 'PCA', 'MI', 'EdgeR', 'DESeq2'])
     if n == 10:
         df_10 = (df.copy() * 10).round().astype(int)
         matrix_triu = np.triu(np.ones(np.shape(df_10)))
     elif n == 100:
         df_100 = (df.copy()).round().astype(int)
         matrix_tril = np.tril(np.ones(np.shape(df_100)), -1)
+        gray_mask = np.array((df_100 == 200) * 1) ##
+        matrix_tril = matrix_tril + gray_mask ##
     plt.figure(figsize=(20, 20))
     sns.heatmap(df)
     plt.xlabel('')
@@ -137,10 +155,18 @@ for n in n_args:
 
 # Heatmap 10 vs 100 features
 plt.figure(figsize=(20, 20))
-sns.heatmap(df_10, mask=matrix_triu, vmin=0, vmax=100, cbar=False, annot=True, cmap="BuPu", annot_kws={"fontsize":30}, fmt='d', square=True)
-h = sns.heatmap(df_100, mask=matrix_tril, vmin=0, vmax=100, annot=True, cmap="BuPu", annot_kws={"fontsize":30}, cbar_kws={"ticks":[0, 100], "shrink": .81}, fmt='d', square=True)
-# h.tick_params(bottom=False, labelbottom=False)  # to remove bottom ticks and tick labels
-# h.tick_params(left=False, labelleft=False)  # to remove bottom ticks and tick labels
+sns.heatmap(df_10, mask=matrix_triu, vmin=0, vmax=100, cbar=False, annot=True, cmap='BuPu', annot_kws={"fontsize":30}, fmt='d', square=True)
+h = sns.heatmap(df_100, mask=matrix_tril, vmin=0, vmax=100, annot=True, cmap='BuPu', annot_kws={"fontsize":30}, cbar_kws={"ticks":[0, 100], "shrink": .81}, fmt='d', square=True)
+
+# If applicable, cases with a value of 200 (nan) are colored in gray
+gray_mask = np.array((df_100 != 200) * 1)
+gray_cmap = ListedColormap(['lightgray'])
+h = sns.heatmap(df_100, mask=gray_mask, annot=False, cmap=gray_cmap, square=True, cbar=False)
+
+# Ticks
+h.tick_params(bottom=False, labelbottom=False)  # to remove bottom ticks and tick labels
+# h.tick_params(left=False, labelleft=False)  # to remove left ticks and tick labels
+
 # Labels
 plt.xlabel('Upper triangular: comparison among 100 features', loc='right', labelpad=50, fontsize=30)
 # plt.xlabel('', loc='right', labelpad=50, fontsize=30)
@@ -148,12 +174,15 @@ plt.ylabel('Lower triangular: comparison among 10 features', loc='bottom', label
 # plt.ylabel('', loc='bottom', labelpad=50, fontsize=30)
 ax = plt.gca()
 ax.xaxis.set_label_position('top')
+
 # Ticks
 ax.tick_params(axis='both', which='major', labelsize=30)
+
 # Colorbar
 cbar = h.figure.axes[-1]
 cbar.tick_params(labelsize=30)
 cbar.set_yticklabels(['0%', '100%'])
+
 # Save
 plt.savefig(os.path.join(save_path, "figures", f"heatmap_FS_10_vs_100.png"), bbox_inches='tight')
 

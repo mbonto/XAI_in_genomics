@@ -3,7 +3,6 @@ import os
 import sys
 code_path = os.path.split(os.path.split(os.getcwd())[0])[0]
 sys.path.append(code_path)
-import torch
 import numpy as np
 import random
 from sklearn.metrics import balanced_accuracy_score, accuracy_score
@@ -14,15 +13,16 @@ from setting import *
 from utils import *
 from loader import *
 from sklearn.linear_model import LogisticRegression
+from xgboost import XGBClassifier
 from sklearn.neighbors import KNeighborsClassifier
 
 
 # Arguments
 argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="dataset name")
-argParser.add_argument("-m", "--model", type=str, help="model name (LR_L1_penalty, KNN, LR_L2_penalty)")
+argParser.add_argument("-m", "--model", type=str, help="model name (LR_L1_penalty, LR_L2_penalty, xgboost, KNN)")
 argParser.add_argument("--exp", type=int, help="experiment number", default=1)
-argParser.add_argument("--selection", type=str, help="method used to select features (ex: MI, DESeq2, IG_LR_L1_penalty_set_train_exp_1, IG_MLP_set_train_exp_1)")
+argParser.add_argument("--selection", type=str, help="method used to select features (ex: MI, DESeq2, IG_LR_L1_penalty_set_train_exp_1, IG_MLP_set_train_exp_1, xgboost_exp_1)")
 argParser.add_argument("--n_feat_selected", type=int, help="number of features selected.")
 argParser.add_argument("--selection_type", type=str, choices=["best", "worst", "random_wo_best"], help="when `selection` is given, keep best, worst or random without best features.")
 args = argParser.parse_args()
@@ -66,6 +66,10 @@ elif model_name == "LR_L2_penalty":
 elif model_name == "KNN":
     K = 3
     clf = KNeighborsClassifier(n_neighbors=K)
+elif model_name == "xgboost":
+    n_estimator, max_depth = get_hyperparameters(name, "xgboost")
+    clf = XGBClassifier(n_estimators=n_estimator, max_depth=max_depth, objective='binary:logistic', random_state=seed) if n_class == 2 else XGBClassifier(n_estimators=n_estimator, max_depth=max_depth, objective='multi:softmax', random_state=seed)
+
 
 
 # Train

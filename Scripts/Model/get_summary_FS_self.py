@@ -11,7 +11,7 @@ from setting import *
 # Arguments
 argParser = argparse.ArgumentParser()
 argParser.add_argument("-n", "--name", type=str, help="Dataset name")
-argParser.add_argument("-m", "--model", type=str, help="Model name (LR, MLP, GCN, LR_L1_penalty, LR_L2_penalty)")
+argParser.add_argument("-m", "--model", type=str, help="Model name (LR, MLP, GCN, LR_L1_penalty, LR_L2_penalty, xgboost)")
 argParser.add_argument("--n_repet", type=int, help="Results are averaged for all experiments between 1 and `n_repet`")
 args = argParser.parse_args()
 name = args.name
@@ -29,7 +29,7 @@ exps = np.arange(1, n_repet+1)
 n_feats = [1, 5, 10 , 50, 100, 500, 1000]
 n_rand = 3
 rands = np.arange(1, n_rand + 1)
-selections = {"LR": "IG_LR_set_train_", "MLP":"IG_MLP_set_train_", "GCN":"IG_GCN_set_train_", "LR_L1_penalty":"IG_LR_L1_penalty_set_train_", "LR_L2_penalty":"IG_LR_L2_penalty_set_train_"}
+selections = {"LR": "IG_LR_set_train_", "MLP":"IG_MLP_set_train_", "GCN":"IG_GCN_set_train_", "LR_L1_penalty":"IG_LR_L1_penalty_set_train_", "LR_L2_penalty":"IG_LR_L2_penalty_set_train_", "xgboost":"xgboost_"}
 
 
 # Summarize results

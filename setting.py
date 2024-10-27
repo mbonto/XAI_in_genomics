@@ -7,9 +7,6 @@ def set_path():
 # Sets of variables
 import os
 import numpy as np
-import torch.nn as nn
-import torch.optim as optim
-from torch.optim.lr_scheduler import MultiStepLR
 
 
 def get_hyperparameters(name, model_name):
@@ -27,6 +24,24 @@ def get_hyperparameters(name, model_name):
         elif name in ["BRCA",]:
             C = 0.01
         return C
+    elif model_name == "xgboost":
+        if name == "BRCA-pam":
+            max_depth = 1
+            n_estimator = 50
+        elif name == "ttg-breast":
+            max_depth = 1
+            n_estimator = 50
+        elif name == "BRCA":
+            max_depth = 1
+            n_estimator = 25
+        elif name == "pancan":
+            max_depth = 1
+            n_estimator = 200
+        elif name == "ttg-all":
+            max_depth = 5
+            n_estimator = 100
+        return n_estimator, max_depth
+
     else:
         n_layer = None
         n_hidden_feat = None
@@ -53,6 +68,10 @@ def get_hyperparameters(name, model_name):
             
 
 def set_optimizer(name, model):
+    import torch.nn as nn
+    import torch.optim as optim
+    from torch.optim.lr_scheduler import MultiStepLR
+
     n_epoch = 25
     weight_decay = 1e-4
     lr_gamma = 0.1

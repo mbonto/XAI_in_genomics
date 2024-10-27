@@ -34,7 +34,7 @@ selection_types = ["best", "worst"]
 results = {}
 
 for selection_type in selection_types:
-    for selection in ["IG_LR_L1_penalty_set_train", "IG_LR_L2_penalty_set_train", "IG_MLP_set_train", "IG_GCN_set_train"]:
+    for selection in ["IG_LR_L1_penalty_set_train", "IG_LR_L2_penalty_set_train", "IG_MLP_set_train", "IG_GCN_set_train", "xgboost"]:
         results[selection] = {}
         for n_feat in n_feats:
             results[selection][n_feat] = {}
@@ -70,8 +70,6 @@ for selection_type in selection_types:
 
     # Save
     with open(os.path.join(save_path, model_name, f"classif_perf_with_SF_other_{selection_type}.csv"), "w") as f:
-        # f.write("Features, VAR, PCA, F, MI, DESeq2, LR_L1, LR_L2, MLP, GCN, STD_VAR, STD_PCA, STD_F, STD_MI, STD_DESeq2, STD_LR_L1, STD_LR_L2, STD_MLP, STD_GCN\n")
-        f.write("Features, VAR, PCA, MI, EdgeR, DESeq2, LR_L1, LR_L2, MLP, GCN, STD_VAR, STD_PCA, STD_MI, STD_EdgeR, STD_DESeq2, STD_LR_L1, STD_LR_L2, STD_MLP, STD_GCN\n")
+        f.write("Features, VAR, PCA, MI, EdgeR, DESeq2, LR_L1, LR_L2, MLP, GCN, XGBoost, STD_VAR, STD_PCA, STD_MI, STD_EdgeR, STD_DESeq2, STD_LR_L1, STD_LR_L2, STD_MLP, STD_GCN, STD_XGBoost\n")
         for n_feat in n_feats:
-            # f.write(f"{n_feat}, {results['var'][n_feat]['mean']}, {results['PCA_PC1'][n_feat]['mean']}, {results['F'][n_feat]['mean']}, {results['MI'][n_feat]['mean']}, {results['DESeq2'][n_feat]['mean']}, {results['L1'][n_feat]['mean']}, {results['IG_LR_set_train'][n_feat]['mean']}, {results['IG_MLP_set_train'][n_feat]['mean']}, {results['IG_GCN_set_train'][n_feat]['mean']}, {results['var'][n_feat]['std']}, {results['PCA_PC1'][n_feat]['std']}, {results['F'][n_feat]['std']}, {results['MI'][n_feat]['std']}, {results['DESeq2'][n_feat]['std']}, {results['L1'][n_feat]['std']}, {results['IG_LR_set_train'][n_feat]['std']}, {results['IG_MLP_set_train'][n_feat]['std']}, {results['IG_GCN_set_train'][n_feat]['std']}\n")
-            f.write(f"{n_feat}, {results['var'][n_feat]['mean']}, {results['PCA_PC1'][n_feat]['mean']}, {results['MI'][n_feat]['mean']}, {results['edgeR'][n_feat]['mean']}, {results['DESeq2'][n_feat]['mean']}, {results['IG_LR_L1_penalty_set_train'][n_feat]['mean']}, {results['IG_LR_L2_penalty_set_train'][n_feat]['mean']}, {results['IG_MLP_set_train'][n_feat]['mean']}, {results['IG_GCN_set_train'][n_feat]['mean']}, {results['var'][n_feat]['std']}, {results['PCA_PC1'][n_feat]['std']}, {results['MI'][n_feat]['std']}, {results['edgeR'][n_feat]['std']}, {results['DESeq2'][n_feat]['std']}, {results['IG_LR_L1_penalty_set_train'][n_feat]['std']}, {results['IG_LR_L2_penalty_set_train'][n_feat]['std']}, {results['IG_MLP_set_train'][n_feat]['std']}, {results['IG_GCN_set_train'][n_feat]['std']}\n")
+            f.write(f"{n_feat}, {results['var'][n_feat]['mean']}, {results['PCA_PC1'][n_feat]['mean']}, {results['MI'][n_feat]['mean']}, {results['edgeR'][n_feat]['mean']}, {results['DESeq2'][n_feat]['mean']}, {results['IG_LR_L1_penalty_set_train'][n_feat]['mean']}, {results['IG_LR_L2_penalty_set_train'][n_feat]['mean']}, {results['IG_MLP_set_train'][n_feat]['mean']}, {results['IG_GCN_set_train'][n_feat]['mean']}, {results['xgboost'][n_feat]['mean']}, {results['var'][n_feat]['std']}, {results['PCA_PC1'][n_feat]['std']}, {results['MI'][n_feat]['std']}, {results['edgeR'][n_feat]['std']}, {results['DESeq2'][n_feat]['std']}, {results['IG_LR_L1_penalty_set_train'][n_feat]['std']}, {results['IG_LR_L2_penalty_set_train'][n_feat]['std']}, {results['IG_MLP_set_train'][n_feat]['std']}, {results['IG_GCN_set_train'][n_feat]['std']}, {results['xgboost'][n_feat]['std']}\n")
